@@ -317,7 +317,7 @@
         <button class="refresh-btn" style="background:#0D3133;color:#fff;border-color:#0D3133" onclick="aiAsk('question',document.getElementById('ai-q').value)">Ask</button>
       </div>
       <div id="ai-out" style="font-size:.88rem;line-height:1.6;color:#222;white-space:pre-wrap"></div>
-      <div style="font-size:.7rem;color:#888;margin-top:8px">Only summarised numbers (counts and rates, no names or individual records) are sent to Adamsbridge's own Azure service (Claude). Answers use only those numbers and state facts, not recommendations. Check against the tab before quoting.</div>
+      <div style="font-size:.7rem;color:#888;margin-top:8px">Only summarised numbers (counts and rates, no names or individual records) are sent to Adamsbridge's own Azure service. Answers use only those numbers and state facts, not recommendations. Check against the tab before quoting.</div>
     </div>
     <div class="hm-box hm-flags"><div class="hm-sec">What needs a look this week</div><div id="hm-flags"></div></div>
     <div class="hm-start" onclick="openTab('p0')"><div><div class="t">Start with the Organisation Health Check</div><div class="d">One health score, and everything flagged this week across all pages.</div></div><div class="b">Open Org Health →</div></div>
@@ -524,7 +524,7 @@
 
   <div class="card">
     <div class="ctitle">I want to know… (question finder)</div>
-    <table class="guide-find"><thead><tr><th>Question</th><th>Where to look</th><th></th></tr></thead><tbody><tr><td>Give me the whole picture in a few lines.</td><td><strong>Org Health Check</strong> <span class="guide-where">→ last section, Insights in plain words → Get insights</span></td><td><button class="gt-open" onclick="openTab('pli')">Go →</button></td></tr><tr><td>Why is something red, amber or green?</td><td><strong>Assumptions &amp; Indicators</strong> <span class="guide-where">→ Colours view</span></td><td><button class="gt-open" onclick="openAssump('colours')">Go →</button></td></tr><tr><td>What span of control is assumed for each department?</td><td><strong>Assumptions &amp; Indicators</strong> <span class="guide-where">→ Span of control view</span></td><td><button class="gt-open" onclick="openAssump('span')">Go →</button></td></tr><tr><td>What does each number on the dashboard show?</td><td><strong>Assumptions &amp; Indicators</strong> <span class="guide-where">→ Key indicators view</span></td><td><button class="gt-open" onclick="openAssump('indicators')">Go →</button></td></tr><tr><td>How healthy is the organisation overall? What is flagged this week?</td><td><strong>Org Health Check</strong> <span class="guide-where">→ Top card and score tiles</span></td><td><button class="gt-open" onclick="openTab('p0')">Go →</button></td></tr><tr><td>Who reports to whom? What does a department or BU Head's team look like?</td><td><strong>Org Chart</strong> <span class="guide-where">→ View by Department or BU Head; click a name to open their team</span></td><td><button class="gt-open" onclick="openTab('porg')">Go →</button></td></tr><tr><td>Which BU Head's area is losing the most people — and is it getting better or worse?</td><td><strong>Org Health Check</strong> <span class="guide-where">→ Leadership heatmap, Group by BU Head</span></td><td><button class="gt-open" onclick="openTab('p0')">Go →</button></td></tr><tr><td>Which BU Head has people serving notice, early exits or a gender imbalance?</td><td><strong>Attrition</strong> <span class="guide-where">→ View: By BU Head; and Diversity → Gender and attrition by BU Head</span></td><td><button class="gt-open" onclick="openTab('p9')">Go →</button></td></tr><tr><td>Who might leave soon (already serving notice)?</td><td><strong>Manager Health</strong> <span class="guide-where">→ Retention risk card</span></td><td><button class="gt-open" onclick="openTab('p4')">Go →</button></td></tr><tr><td>How are exits this year compared with last year, month by month?</td><td><strong>Attrition</strong> <span class="guide-where">→ Overview → This year vs last year</span></td><td><button class="gt-open" onclick="openTab('p9')">Go →</button></td></tr><tr><td>Which manager, department or project is losing the most people?</td><td><strong>Attrition</strong> <span class="guide-where">→ View: By Manager / By Department; Project-wise table</span></td><td><button class="gt-open" onclick="openTab('p9')">Go →</button></td></tr><tr><td>Which location is losing the most people?</td><td><strong>Attrition</strong> <span class="guide-where">→ View: By Location</span></td><td><button class="gt-open" onclick="openTab('p9')">Go →</button></td></tr><tr><td>Who left, when and why?</td><td><strong>Attrition</strong> <span class="guide-where">→ View: Who Left</span></td><td><button class="gt-open" onclick="openTab('p9')">Go →</button></td></tr><tr><td>Are we losing good performers?</td><td><strong>Org Health Check</strong> <span class="guide-where">→ Performance × Attrition</span></td><td><button class="gt-open" onclick="openTab('p0')">Go →</button></td></tr><tr><td>How many people do we have and how has that changed?</td><td><strong>Org Snapshot</strong> <span class="guide-where">→ Headcount tiles and month-on-month growth</span></td><td><button class="gt-open" onclick="openTab('p1')">Go →</button></td></tr><tr><td>Which managers are overloaded or missing a Team Lead layer?</td><td><strong>Manager Health</strong> <span class="guide-where">→ Senior / junior manager tables</span></td><td><button class="gt-open" onclick="openTab('p4')">Go →</button></td></tr><tr><td>Where does the gender pipeline narrow? Do men and women leave differently?</td><td><strong>Diversity</strong> <span class="guide-where">→ Seniority chart and Male vs Female attrition</span></td><td><button class="gt-open" onclick="openTab('p2')">Go →</button></td></tr><tr><td>Do we have the right mix of delivery staff and managers?</td><td><strong>Capacity Mix</strong> <span class="guide-where">→ Needed vs actual by level</span></td><td><button class="gt-open" onclick="openTab('p13')">Go →</button></td></tr><tr><td>Where is hiring stuck? Which roles are ageing?</td><td><strong>Talent Acquisition</strong> <span class="guide-where">→ Demand &amp; Pipeline view</span></td><td><button class="gt-open" onclick="openTab('p12')">Go →</button></td></tr><tr><td>What do employees say in the survey, and does it match why people leave?</td><td><strong>Org Snapshot</strong> <span class="guide-where">→ Topic: Employee Satisfaction Survey; also Org Health Check (last section), Dept Health report and Insights</span></td><td><button class="gt-open" onclick="openTab('p1')">Go →</button></td></tr><tr><td>I need a printable org chart for a department, BU Head, project, location or manager.</td><td><strong>Org Chart PDF</strong> <span class="guide-where">→ Choose what to draw, then Download PDF</span></td><td><button class="gt-open" onclick="openTab('porgpdf')">Go →</button></td></tr><tr><td>I need a document to share for one department.</td><td><strong>Dept Health</strong> <span class="guide-where">→ Preview and Download PDF</span></td><td><button class="gt-open" onclick="openTab('p11')">Go →</button></td></tr></tbody></table>
+    <table class="guide-find"><thead><tr><th>Question</th><th>Where to look</th><th></th></tr></thead><tbody><tr><td>Give me the whole picture in a few lines.</td><td><strong>Org Health Check</strong> <span class="guide-where">→ Insights in plain words, near the top; choose what to read from the Show list</span></td><td><button class="gt-open" onclick="openTab('pli')">Go →</button></td></tr><tr><td>Why is something red, amber or green?</td><td><strong>Assumptions &amp; Indicators</strong> <span class="guide-where">→ Colours view</span></td><td><button class="gt-open" onclick="openAssump('colours')">Go →</button></td></tr><tr><td>What span of control is assumed for each department?</td><td><strong>Assumptions &amp; Indicators</strong> <span class="guide-where">→ Span of control view</span></td><td><button class="gt-open" onclick="openAssump('span')">Go →</button></td></tr><tr><td>What does each number on the dashboard show?</td><td><strong>Assumptions &amp; Indicators</strong> <span class="guide-where">→ Key indicators view</span></td><td><button class="gt-open" onclick="openAssump('indicators')">Go →</button></td></tr><tr><td>How healthy is the organisation overall? What is flagged this week?</td><td><strong>Org Health Check</strong> <span class="guide-where">→ Top card and score tiles</span></td><td><button class="gt-open" onclick="openTab('p0')">Go →</button></td></tr><tr><td>Who reports to whom? What does a department or BU Head's team look like?</td><td><strong>Org Chart</strong> <span class="guide-where">→ View by Department or BU Head; click a name to open their team</span></td><td><button class="gt-open" onclick="openTab('porg')">Go →</button></td></tr><tr><td>Which BU Head's area is losing the most people — and is it getting better or worse?</td><td><strong>Org Health Check</strong> <span class="guide-where">→ Leadership heatmap, Group by BU Head</span></td><td><button class="gt-open" onclick="openTab('p0')">Go →</button></td></tr><tr><td>Which BU Head has people serving notice, early exits or a gender imbalance?</td><td><strong>Attrition</strong> <span class="guide-where">→ View: By BU Head; and Diversity → Gender and attrition by BU Head</span></td><td><button class="gt-open" onclick="openTab('p9')">Go →</button></td></tr><tr><td>Who might leave soon (already serving notice)?</td><td><strong>Manager Health</strong> <span class="guide-where">→ Retention risk card</span></td><td><button class="gt-open" onclick="openTab('p4')">Go →</button></td></tr><tr><td>How are exits this year compared with last year, month by month?</td><td><strong>Attrition</strong> <span class="guide-where">→ Overview → This year vs last year</span></td><td><button class="gt-open" onclick="openTab('p9')">Go →</button></td></tr><tr><td>Which manager, department or project is losing the most people?</td><td><strong>Attrition</strong> <span class="guide-where">→ View: By Manager / By Department; Project-wise table</span></td><td><button class="gt-open" onclick="openTab('p9')">Go →</button></td></tr><tr><td>Which location is losing the most people?</td><td><strong>Attrition</strong> <span class="guide-where">→ View: By Location</span></td><td><button class="gt-open" onclick="openTab('p9')">Go →</button></td></tr><tr><td>Who left, when and why?</td><td><strong>Attrition</strong> <span class="guide-where">→ View: Who Left</span></td><td><button class="gt-open" onclick="openTab('p9')">Go →</button></td></tr><tr><td>Are we losing good performers?</td><td><strong>Org Health Check</strong> <span class="guide-where">→ Performance × Attrition</span></td><td><button class="gt-open" onclick="openTab('p0')">Go →</button></td></tr><tr><td>How many people do we have and how has that changed?</td><td><strong>Org Snapshot</strong> <span class="guide-where">→ Headcount tiles and month-on-month growth</span></td><td><button class="gt-open" onclick="openTab('p1')">Go →</button></td></tr><tr><td>Which managers are overloaded or missing a Team Lead layer?</td><td><strong>Manager Health</strong> <span class="guide-where">→ Senior / junior manager tables</span></td><td><button class="gt-open" onclick="openTab('p4')">Go →</button></td></tr><tr><td>Where does the gender pipeline narrow? Do men and women leave differently?</td><td><strong>Diversity</strong> <span class="guide-where">→ Seniority chart and Male vs Female attrition</span></td><td><button class="gt-open" onclick="openTab('p2')">Go →</button></td></tr><tr><td>Do we have the right mix of delivery staff and managers?</td><td><strong>Capacity Mix</strong> <span class="guide-where">→ Needed vs actual by level</span></td><td><button class="gt-open" onclick="openTab('p13')">Go →</button></td></tr><tr><td>Where is hiring stuck? Which roles are ageing?</td><td><strong>Talent Acquisition</strong> <span class="guide-where">→ Demand &amp; Pipeline view</span></td><td><button class="gt-open" onclick="openTab('p12')">Go →</button></td></tr><tr><td>What do employees say in the survey, and does it match why people leave?</td><td><strong>Org Snapshot</strong> <span class="guide-where">→ Topic: Employee Satisfaction Survey; also Org Health Check (last section), Dept Health report and Insights</span></td><td><button class="gt-open" onclick="openTab('p1')">Go →</button></td></tr><tr><td>I need a printable org chart for a department, BU Head, project, location or manager.</td><td><strong>Org Chart PDF</strong> <span class="guide-where">→ Choose what to draw, then Download PDF</span></td><td><button class="gt-open" onclick="openTab('porgpdf')">Go →</button></td></tr><tr><td>I need a document to share for one department.</td><td><strong>Dept Health</strong> <span class="guide-where">→ Preview and Download PDF</span></td><td><button class="gt-open" onclick="openTab('p11')">Go →</button></td></tr></tbody></table>
   </div>
 
   <div class="card">
@@ -535,9 +535,9 @@
   <div class="card">
     <div class="ctitle">Tab by tab — open any tab for what is on it, how to filter it and what to look at first</div>
             <details class="guide-tab">
-      <summary><span class="gt-name">Insights (inside Org Health Check)</span><span class="gt-use">The whole dashboard read out in plain lines, section by section. Last section of Org Health Check.</span><button class="gt-open" onclick="event.preventDefault();event.stopPropagation();openTab('pli')">Open tab →</button></summary>
+      <summary><span class="gt-name">Insights (inside Org Health Check)</span><span class="gt-use">The whole dashboard read out in plain lines, section by section. Near the top of Org Health Check; choose a section from the Show list.</span><button class="gt-open" onclick="event.preventDefault();event.stopPropagation();openTab('pli')">Open tab →</button></summary>
       <table class="guide-tbl">
-        <tr><th>What is on it</th><td><ul><li>Press <strong>Get insights</strong> for observations on Overall picture, Workforce, Attrition, Employee survey, Structure, Capacity and Hiring.</li><li>Each line is calculated from the live numbers by fixed rules (no AI, nothing leaves the dashboard) and links to the tab behind it.</li><li>Red and amber dots mark a number outside the rules; green is inside them; grey is for information.</li></ul></td></tr>
+        <tr><th>What is on it</th><td><ul><li>Use the <strong>Show</strong> list to read one section at a time: Overall picture, Workforce, Attrition, Employee survey, Structure, Capacity or Hiring, or all together.</li><li>Each line is calculated from the live numbers by fixed rules (no AI, nothing leaves the dashboard) and links to the tab behind it.</li><li>Red and amber dots mark a number outside the rules; green is inside them; grey is for information.</li></ul></td></tr>
         <tr><th>How to slice and dice</th><td><ul><li><strong>Department</strong> and <strong>BU Head</strong> dropdowns; the read-out regenerates for the slice.</li></ul></td></tr>
         <tr><th>What the rules are</th><td><ul><li>A month is flagged when exits are at least 1.5 times the previous 11-month average (and at least 3 higher).</li><li>A department is flagged when its 12-month exits are at least 1.3 times the overall share of headcount and at least 3 points higher (departments of 30 or more people).</li><li>Exit concentration is flagged when the top three departments' share of exits is 10 points above their share of headcount.</li><li>Early exits are flagged at 20% or more of leavers within 90 days.</li><li>Managers, capacity and hiring lines use the rules already listed in this guide.</li></ul></td></tr>
       </table>
@@ -731,6 +731,16 @@
     </div>
   </div>
 
+  <div class="card" id="ohi-li-head" style="border-top:3px solid #E69F50">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <div class="ctitle" style="margin:0">Insights in plain words</div>
+      <label for="li-sel" style="font-size:.82rem;color:#0D3133;font-weight:700;margin-left:6px">Show:</label>
+      <select id="li-sel" onchange="liPick(this.value)" style="padding:8px 14px;border:1.5px solid #73847B;border-radius:6px;font-family:inherit;font-size:.85rem;font-weight:700;min-width:240px"></select>
+      <span style="font-size:.7rem;color:#888;margin-left:auto">Follows the Department and BU Head chosen above</span>
+    </div>
+    <div id="li-out" style="margin-top:10px"></div>
+  </div>
+
   <div class="section-head"><span class="sh-num">1</span><span class="sh-title">Organizational Health Index</span></div>
   <div class="card" id="ohi-card" style="border-top:5px solid #0D3133">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
@@ -827,18 +837,8 @@
   <div class="section-head" id="ohi-esat-head" style="display:none"><span class="sh-num">6</span><span class="sh-title">Employee Satisfaction (ESAT 2026)</span></div>
   <div id="ohi-esat-wrap"></div>
 
-  <!-- 7. Insights in plain words — follows the shared Department and BU Head filters above -->
-  <div class="section-head" id="ohi-li-head"><span class="sh-num">7</span><span class="sh-title">Insights in plain words</span></div>
-  <div class="card" style="background:#F5F4F2;border:1.5px solid #73847B">
-    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-      <span style="font-size:.84rem;color:#0D3133;line-height:1.5">What the numbers above show right now, section by section, for the Department and BU Head chosen at the top.</span>
-      <button onclick="liGenerate()" style="padding:9px 22px;background:#E69F50;color:#fff;border:none;border-radius:6px;font-family:inherit;font-weight:700;font-size:.85rem;cursor:pointer">Get insights</button>
-    </div>
-  </div>
-  <div id="li-out"><div class="card" style="color:#73847B;font-size:.88rem">Press <strong>Get insights</strong> to read headcount, attrition, the employee survey, structure, capacity and hiring in plain lines.</div></div>
-
-  <!-- 8. Culture metrics — the culture measures the dashboard can show from its own data and the ESAT 2026 survey -->
-  <div class="section-head" id="ohi-cm-head"><span class="sh-num">8</span><span class="sh-title">Culture metrics</span></div>
+  <!-- 7. Culture metrics — the culture measures the dashboard can show from its own data and the ESAT 2026 survey -->
+  <div class="section-head" id="ohi-cm-head"><span class="sh-num">7</span><span class="sh-title">Culture metrics</span></div>
   <div id="ohi-cm-wrap"></div>
 </div>
 
@@ -5294,12 +5294,22 @@ function orgExpand(d) {
   const n = ORG_ALL[+d.dataset.id]; if (!n) return;
   d.querySelector(':scope > .org-kids').innerHTML = n.kids.map(orgNodeHTML).join('');
 }
+let ORG_FOUNDERS = null;
+function orgFounderNames(e) {
+  if (!ORG_FOUNDERS || ORG_FOUNDERS.n !== ALL_EMPLOYEES_FULL.length) {
+    const nn = x => String(x || '').trim().toLowerCase(), pr = ALL_EMPLOYEES_FULL.find(x => nn(x.name) === 'prithip kumar');
+    ORG_FOUNDERS = { n: ALL_EMPLOYEES_FULL.length, set: new Set(pr ? [pr.buHead].concat(pr.buExtra || []).map(nn).filter(Boolean) : []) };
+  }
+  const nn = x => String(x || '').trim().toLowerCase();
+  return [e.buHead].concat(e.buExtra || []).map(x => String(x || '').trim()).filter((x, i, a) => x && ORG_FOUNDERS.set.has(nn(x)) && nn(x) !== nn(e.name) && a.findIndex(y => nn(y) === nn(x)) === i);
+}
 function orgBox(n, gi) {
   const e = n.e;
   return '<div class="oc-box' + (n.kids.length ? ' oc-click' : '') + '"' + (n.kids.length ? ' onclick="orgFocus(' + gi + ',' + n.id + ')" title="Click to open this team"' : '') + '>' +
     '<div class="oc-nm">' + orgEsc(e.name) + '</div><div class="oc-sub">' + orgEsc(e.desig || 'Designation not recorded') + (e.level ? ' · ' + orgEsc(e.level) : '') + '</div>' +
     (/notice/i.test(e.status||'') ? '<div class="oc-sub" style="color:#9A4B00;font-weight:700">serving notice</div>' : '') +
     (n.up ? '<div class="oc-sub" style="color:#8a6d3b">' + orgEsc(n.up) + '</div>' : '') +
+    (() => { const f = orgFounderNames(e); return f.length ? '<div class="oc-sub" style="color:#8a6d3b">Also reports to ' + orgEsc(f.join(', ')) + '</div>' : ''; })() +
     (n.kids.length ? '<div class="oc-ct">' + n.kids.length + ' direct · ' + n.total + ' in team ▾</div>' : '') + '</div>';
 }
 const ORG_PR = { focus: null, reg: [] };
@@ -5317,7 +5327,7 @@ function orgPrTeamHTML(gi) {
 }
 function orgPrithipHTML(gi) {
   const plans = buchPlans(); if (!plans.length) return '';
-  const sdBox = n => { const src = orgPrSrc(n), clk = src && src.kids.length, ex = (n.e.buExtra || []).filter(x => String(x).trim().toLowerCase() !== 'van littrell'); return '<div class="oc-box' + (clk ? ' oc-click' : '') + '"' + (clk ? ' onclick="orgPrFocus(' + gi + ',' + orgPrId(src) + ')" title="Click to open this team"' : '') + '><div class="oc-nm">' + orgEsc(n.e.name) + '</div><div class="oc-sub">' + orgEsc(n.e.desig || '') + '</div><div class="oc-sub" style="font-weight:700;color:#0D3133">' + orgEsc(n.e.dept || '') + '</div>' + (ex.length ? '<div class="oc-sub" style="color:#8a6d3b">Also reports to ' + orgEsc(ex.join(', ')) + '</div>' : '') + '<div class="oc-ct">SD · ' + orgEsc((n.metaX || '').split(' · ').pop()) + (clk ? ' ▾' : '') + '</div></div>'; };
+  const sdBox = n => { const src = orgPrSrc(n), clk = src && src.kids.length, nn = x => String(x || '').trim().toLowerCase(), ex = [n.e.buHead].concat(n.e.buExtra || []).map(x => String(x || '').trim()).filter((x, i, a) => x && nn(x) !== 'van littrell' && nn(x) !== nn(n.e.name) && nn(x) !== nn(n.e.mgr) && a.findIndex(y => nn(y) === nn(x)) === i); return '<div class="oc-box' + (clk ? ' oc-click' : '') + '"' + (clk ? ' onclick="orgPrFocus(' + gi + ',' + orgPrId(src) + ')" title="Click to open this team"' : '') + '><div class="oc-nm">' + orgEsc(n.e.name) + '</div><div class="oc-sub">' + orgEsc(n.e.desig || '') + '</div><div class="oc-sub" style="font-weight:700;color:#0D3133">' + orgEsc(n.e.dept || '') + '</div>' + (ex.length ? '<div class="oc-sub" style="color:#8a6d3b">Also reports to ' + orgEsc(ex.join(', ')) + '</div>' : '') + '<div class="oc-ct">SD · ' + orgEsc((n.metaX || '').split(' · ').pop()) + (clk ? ' ▾' : '') + '</div></div>'; };
   const van = plans[0].root, pk = van.kids.find(k => k.e && /^prithip/i.test(k.e.name)) || van.kids[0], rest = van.kids.filter(k => k !== pk), e = pk.e;
   const founders = []; [van.label].concat(pk.e.buExtra || []).forEach(x => { if (x && !founders.some(f => f.toLowerCase() === String(x).trim().toLowerCase())) founders.push(String(x).trim()); });
   const fBox = nm => '<div class="oc-focus" style="min-width:150px"><div class="oc-nm" style="color:#fff">' + orgEsc(nm) + '</div></div>';
@@ -5374,7 +5384,7 @@ function orgDrawChart(gi) {
       '<div class="oc-sub">' + node.kids.length + ' direct · ' + node.total + ' in team</div></div>' + (kids.length ? '<div class="oc-line"></div>' : '');
   } else if (deptHead) {
     const he = deptHead.e;
-    top = '<div class="oc-focus"><div class="oc-nm" style="color:#fff">' + orgEsc(he.name) + '</div><div class="oc-sub">' + orgEsc(he.desig || '') + (he.level ? ' · ' + orgEsc(he.level) : '') + '</div><div class="oc-sub">BU Head · ' + orgEsc(g.key) + '</div><div class="oc-sub">' + g.count + ' people in ' + orgEsc(g.key) + '</div></div>' + (kids.length ? '<div class="oc-line"></div>' : '');
+    top = '<div class="oc-focus"><div class="oc-nm" style="color:#fff">' + orgEsc(he.name) + '</div><div class="oc-sub">' + orgEsc(he.desig || '') + (he.level ? ' · ' + orgEsc(he.level) : '') + '</div><div class="oc-sub">BU Head · ' + orgEsc(g.key) + '</div><div class="oc-sub">' + g.count + ' people in ' + orgEsc(g.key) + '</div>' + (() => { const nn = x => String(x || '').trim().toLowerCase(); const rt = String(he.mgr || '').trim() || (nn(he.buHead) !== nn(he.name) ? String(he.buHead || '').trim() : ''); const ex = [he.buHead].concat(he.buExtra || []).map(x => String(x || '').trim()).filter((x, i, a) => x && nn(x) !== nn(rt) && nn(x) !== nn(he.name) && a.findIndex(y => nn(y) === nn(x)) === i); return (rt || ex.length) ? '<div class="oc-sub" style="color:#F7C98B">Reports to ' + orgEsc(rt) + (ex.length ? (rt ? ' · also ' : 'also ') + orgEsc(ex.join(', ')) : '') + '</div>' : ''; })() + '</div>' + (kids.length ? '<div class="oc-line"></div>' : '');
   } else if (kids.length > 1) {
     top = '<div class="oc-focus"><div class="oc-nm" style="color:#fff">' + orgEsc(g.key) + '</div><div class="oc-sub">' + g.count + ' people · ' + g.roots.length + ' top-level</div></div><div class="oc-line"></div>';
   }
@@ -6101,7 +6111,7 @@ function chOpenView(q, s) {
     if (q.tab === 'p13' && ps && s.proj) { ps.value = s.proj; renderAll(); }
     const av = document.getElementById('attr-view-select');
     if (q.tab === 'p9' && av && q.attr) { av.value = q.attr; renderAttrition(); }
-    if (q.tab === 'pli') liGenerate();
+    if (q.tab === 'pli') { LI_SEL = 'Overall picture'; liGenerate(); }
     if (q.topic) { const ts = document.getElementById('snap-topic'); if (ts) { snapTopicApply(); if ([...ts.options].some(o => o.value === q.topic)) { ts.value = q.topic; snapTopicApply(); } } }
   } catch (e) { console.error('open view failed', e); }
   openTab(q.tab); buddyOpen(false);
@@ -6142,7 +6152,8 @@ try { const h = (location.hash||'').replace(/^#/, '') || sessionStorage.getItem(
 // Every line is computed from the Employee report (and the Recruitment tracker when loaded).
 // Facts and comparisons only — never a recommendation. Thresholds are listed on the Guide's
 // Assumptions & indicators section.
-let LI_GENERATED = false;
+let LI_GENERATED = true;
+let LI_SEL = 'Overall picture';
 const LI_RULES = { monthSpike: 1.5, monthSpikeMin: 3, deptRateMult: 1.3, deptRatePts: 3, deptMinHc: 30, concentrationPts: 10, genderMinGroup: 30, managerExitTop: 3 };
 function liInit() {
   const sel = document.getElementById('pli-dept-select'); if (!sel || sel.options.length > 1) return; // retired: insights now follow the Org Health Check filters
@@ -6151,6 +6162,7 @@ function liInit() {
   if (typeof applyBuToDeptSelects === 'function') applyBuToDeptSelects();
 }
 function liGenerate() { LI_GENERATED = true; renderLiveInsights(); }
+function liPick(v) { LI_SEL = v; renderLiveInsights(); }
 function computeLiveInsights(dept) {
   const out = []; const add = (sec, tone, text, tab) => out.push({ sec, tone, text, tab });
   const pool = ALL_EMPLOYEES.filter(e => !dept || e.dept === dept);
@@ -6279,32 +6291,45 @@ function computeLiveInsights(dept) {
 const LI_ORDER = ['Overall picture','Workforce','Attrition','Employee survey','Structure','Capacity','Hiring'];
 function renderLiveInsights() {
   const host = document.getElementById('li-out'); if (!host) return;
-  if (!LI_GENERATED) return;
   try {
     const dept = SHARED_DEPT_FILTER || '';
     const items = computeLiveInsights(dept);
     const dot = { r:'#D13438', a:'#DA8A00', g:'#107C10', n:'#73847B' };
     const tabId = { 'Org Snapshot':'p1', 'Attrition':'p9', 'Manager Health':'p4', 'Diversity':'p2', 'Capacity Mix':'p13', 'Talent Acquisition':'p12', 'Org Health Check':'p0' };
-    const watch = items.filter(i => i.tone === 'r' || i.tone === 'a').length;
+    const secs = LI_ORDER.filter(sec => items.some(i => i.sec === sec));
+    const watchOf = sec => items.filter(i => i.sec === sec && (i.tone === 'r' || i.tone === 'a')).length;
+    const sel = document.getElementById('li-sel');
+    if (!secs.includes(LI_SEL) && LI_SEL !== '__all') LI_SEL = secs[0] || '__all';
+    if (sel) {
+      sel.innerHTML = secs.map(sec => { const w = watchOf(sec); return `<option value="${sec}">${sec}${w ? ' · ' + w + ' to look at' : ''}</option>`; }).join('') + '<option value="__all">All sections together</option>';
+      sel.value = LI_SEL;
+    }
+    const show = LI_SEL === '__all' ? secs : [LI_SEL];
+    const shown = items.filter(i => show.includes(i.sec));
+    const watch = shown.filter(i => i.tone === 'r' || i.tone === 'a').length;
     const scope = [dept, BU_FILTER].filter(Boolean).join(' / ') || 'the whole organisation';
-    let h = `<div class="card"><div class="ctitle">Summary</div><div style="font-size:.9rem;line-height:1.7">${items.length} observations for <strong>${scope}</strong>, generated ${new Date().toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'})}. <strong>${watch}</strong> ${watch===1?'is':'are'} marked red or amber.</div></div>`;
-    LI_ORDER.forEach(sec => {
+    let h = `<div style="font-size:.84rem;color:#555;margin-bottom:6px">${shown.length} observation${shown.length===1?'':'s'} for <strong>${scope}</strong>, as at ${new Date().toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'})}. <strong>${watch}</strong> ${watch===1?'is':'are'} marked red or amber.</div>`;
+    show.forEach(sec => {
       const rows = items.filter(i => i.sec === sec).sort((a,b) => ({r:0,a:1,n:2,g:3}[a.tone]) - ({r:0,a:1,n:2,g:3}[b.tone]));
       if (!rows.length) return;
-      h += `<div class="card"><div class="ctitle">${sec}</div>` + rows.map(i => `<div style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid #EEF0EF"><span style="flex:0 0 10px;height:10px;border-radius:50%;background:${dot[i.tone]};margin-top:7px"></span><div style="flex:1;font-size:.88rem;line-height:1.55">${i.text.replace(/</g,'&lt;')}</div>${tabId[i.tab] ? `<a onclick="openTab('${tabId[i.tab]}')" style="font-size:.74rem;white-space:nowrap">${i.tab} →</a>` : ''}</div>`).join('') + '</div>';
+      h += (LI_SEL === '__all' ? `<div style="font-size:.78rem;font-weight:700;color:#0D3133;text-transform:uppercase;letter-spacing:.05em;margin:10px 0 2px">${sec}</div>` : '') + rows.map(i => `<div style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid #EEF0EF"><span style="flex:0 0 10px;height:10px;border-radius:50%;background:${dot[i.tone]};margin-top:7px"></span><div style="flex:1;font-size:.88rem;line-height:1.55">${i.text.replace(/</g,'&lt;')}</div>${tabId[i.tab] ? `<a onclick="openTab('${tabId[i.tab]}')" style="font-size:.74rem;white-space:nowrap;cursor:pointer">${i.tab} →</a>` : ''}</div>`).join('');
     });
-    h += '<div class="note">Every line is calculated from the Employee report and Recruitment tracker by fixed rules, with no AI and nothing leaving this dashboard. Dots: red and amber mark a number outside the rules on the Guide page; green is inside them; grey is for information. These are observations, not recommendations.</div>';
+    h += '<div class="note" style="margin-top:8px">Every line is calculated from the Employee report and Recruitment tracker by fixed rules, with no AI and nothing leaving this dashboard. Dots: red and amber mark a number outside the rules on the Guide page; green is inside them; grey is for information. These are observations, not recommendations.</div>';
     host.innerHTML = h;
-  } catch (err) { console.error('Insights failed', err); host.innerHTML = '<div class="card">Insights could not be generated.</div>'; }
+  } catch (err) { console.error('Insights failed', err); host.innerHTML = '<div class="note">Insights could not be generated.</div>'; }
 }
 
 // ── AI INSIGHTS ─────────────────────────────────────────────
 // The browser never holds an AI key. It sends summarised numbers (no names, no individual
-// records) to Adamsbridge's own Azure Function, which calls Claude in Microsoft Foundry using a managed
-// identity. Leave AI_ENDPOINT empty and the panel stays hidden.
-const AI_ENDPOINT = '';   // e.g. https://<function-app>.azurewebsites.net/api/insights
-const AI_SCOPE    = '';   // e.g. api://<function-app-client-id>/insights.read
-function aiInit() { const b = document.getElementById('hm-ai'); if (b) b.style.display = AI_ENDPOINT ? 'block' : 'none'; }
+// records) to Adamsbridge's own Azure service, which calls Azure OpenAI with a key kept on the server. Leave AI_ENDPOINT empty and the panel stays hidden.
+const AI_ENDPOINT = '/api/insights';   // same site: Azure Static Web Apps API. Set '' to switch AI off.
+const AI_SCOPE    = '';   // leave empty: the signed-in Microsoft ID token is used. Set only for a separate Function app.
+async function aiInit() {
+  const b = document.getElementById('hm-ai'); if (!b) return;
+  if (!AI_ENDPOINT) { b.style.display = 'none'; return; }
+  try { const r = await fetch(AI_ENDPOINT, { method: 'GET' }); const j = r.ok ? await r.json() : null; b.style.display = (j && j.ready) ? 'block' : 'none'; }
+  catch (e) { b.style.display = 'none'; }
+}
 function aiFacts() {
   const all = ALL_EMPLOYEES_FULL, now = new Date();
   const U = (y,m,d) => new Date(Date.UTC(y,m,d));
@@ -6333,6 +6358,10 @@ function aiFacts() {
   return L.join('\n');
 }
 async function aiToken() {
+  if (!AI_SCOPE) {
+    let r; try { r = await msalApp.acquireTokenSilent({ scopes: SCOPES, account }); } catch (e) { r = await msalApp.acquireTokenPopup({ scopes: SCOPES, account }); }
+    return r.idToken;
+  }
   try { return (await msalApp.acquireTokenSilent({ scopes: [AI_SCOPE], account })).accessToken; }
   catch (e) { return (await msalApp.acquireTokenPopup({ scopes: [AI_SCOPE], account })).accessToken; }
 }
