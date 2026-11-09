@@ -4445,6 +4445,16 @@ function computeOpenByRole(openReqs) {
 // so candidates are matched to a requirement by Department only, optionally
 // narrowed further by the Recruiter filter if one is active. Shows real
 // counts of currently-active candidates per open requirement.
+// One line under the department so separate requisitions of the same department read as different rows:
+// month the requisition was raised, position type (New / Backfill) and skill set, whichever are on file.
+function taReqSubtitle(r) {
+  const esc = t => String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const parts = [];
+  if (r.reqDate instanceof Date && !isNaN(r.reqDate)) parts.push('Raised ' + r.reqDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric', timeZone: 'UTC' }));
+  if (r.posType && !/not recorded/i.test(r.posType)) parts.push(r.posType);
+  if (r.skillSet) parts.push(r.skillSet);
+  return parts.length ? '<div style="font-size:.72rem;color:#73847B;font-weight:400;margin-top:2px">' + esc(parts.join(' · ')) + '</div>' : '';
+}
 function computePipelineByRequirement(openReqs, candidates) {
   const recruiterFilter = (document.getElementById('ta-dp-recruiter-select')||{}).value || '';
   const activeCandidates = candidates.filter(c =>
@@ -5303,10 +5313,12 @@ function orgFounderNames(e) {
   const nn = x => String(x || '').trim().toLowerCase();
   return [e.buHead].concat(e.buExtra || []).map(x => String(x || '').trim()).filter((x, i, a) => x && ORG_FOUNDERS.set.has(nn(x)) && nn(x) !== nn(e.name) && a.findIndex(y => nn(y) === nn(x)) === i);
 }
+function orgProj(e) { const p = String((e && e.project) || '').trim(); return (p && !/not recorded|not identified/i.test(p)) ? p : ''; }
+function orgProjLine(e, color) { const p = orgProj(e); return p ? '<div class="oc-sub" style="color:' + (color || '#0D3133') + ';font-weight:600">Project: ' + orgEsc(p) + '</div>' : ''; }
 function orgBox(n, gi) {
   const e = n.e;
   return '<div class="oc-box' + (n.kids.length ? ' oc-click' : '') + '"' + (n.kids.length ? ' onclick="orgFocus(' + gi + ',' + n.id + ')" title="Click to open this team"' : '') + '>' +
-    '<div class="oc-nm">' + orgEsc(e.name) + '</div><div class="oc-sub">' + orgEsc(e.desig || 'Designation not recorded') + (e.level ? ' · ' + orgEsc(e.level) : '') + '</div>' +
+    '<div class="oc-nm">' + orgEsc(e.name) + '</div><div class="oc-sub">' + orgEsc(e.desig || 'Designation not recorded') + (e.level ? ' · ' + orgEsc(e.level) : '') + '</div>' + orgProjLine(e) +
     (/notice/i.test(e.status||'') ? '<div class="oc-sub" style="color:#9A4B00;font-weight:700">serving notice</div>' : '') +
     (n.up ? '<div class="oc-sub" style="color:#8a6d3b">' + orgEsc(n.up) + '</div>' : '') +
     (() => { const f = orgFounderNames(e); return f.length ? '<div class="oc-sub" style="color:#8a6d3b">Also reports to ' + orgEsc(f.join(', ')) + '</div>' : ''; })() +
@@ -5321,13 +5333,13 @@ function orgPrTeamHTML(gi) {
   const chain = []; for (let p = node; p; p = p.parent) chain.unshift(p);
   const crumb = '<div class="oc-crumb"><a onclick="orgPrFocus(' + gi + ',null)">Management - top</a>' + chain.map((p, i) => ' › ' + (i === chain.length - 1 ? '<strong>' + orgEsc(p.e.name) + '</strong>' : '<a onclick="orgPrFocus(' + gi + ',' + orgPrId(p) + ')">' + orgEsc(p.e.name) + '</a>')).join('') + '</div>';
   const e = node.e;
-  const box = k => '<div class="oc-box' + (k.kids.length ? ' oc-click' : '') + '"' + (k.kids.length ? ' onclick="orgPrFocus(' + gi + ',' + orgPrId(k) + ')" title="Click to open this team"' : '') + '><div class="oc-nm">' + orgEsc(k.e.name) + '</div><div class="oc-sub">' + orgEsc(k.e.desig || '') + (k.e.level ? ' · ' + orgEsc(k.e.level) : '') + '</div><div class="oc-sub" style="font-weight:700;color:#0D3133">' + orgEsc(k.e.dept || '') + '</div>' + (/notice/i.test(k.e.status || '') ? '<div class="oc-sub" style="color:#9A4B00;font-weight:700">serving notice</div>' : '') + (k.kids.length ? '<div class="oc-ct">' + k.kids.length + ' direct · ' + k.total + ' in team ▾</div>' : '') + '</div>';
-  return crumb + '<div class="oc-top"><div class="oc-focus"><div class="oc-nm" style="color:#fff">' + orgEsc(e.name) + '</div><div class="oc-sub">' + orgEsc(e.desig || '') + (e.level ? ' · ' + orgEsc(e.level) : '') + '</div><div class="oc-sub">' + orgEsc(e.dept || '') + '</div><div class="oc-sub">' + node.kids.length + ' direct · ' + node.total + ' in team</div></div>' +
+  const box = k => '<div class="oc-box' + (k.kids.length ? ' oc-click' : '') + '"' + (k.kids.length ? ' onclick="orgPrFocus(' + gi + ',' + orgPrId(k) + ')" title="Click to open this team"' : '') + '><div class="oc-nm">' + orgEsc(k.e.name) + '</div><div class="oc-sub">' + orgEsc(k.e.desig || '') + (k.e.level ? ' · ' + orgEsc(k.e.level) : '') + '</div><div class="oc-sub" style="font-weight:700;color:#0D3133">' + orgEsc(k.e.dept || '') + '</div>' + orgProjLine(k.e) + (/notice/i.test(k.e.status || '') ? '<div class="oc-sub" style="color:#9A4B00;font-weight:700">serving notice</div>' : '') + (k.kids.length ? '<div class="oc-ct">' + k.kids.length + ' direct · ' + k.total + ' in team ▾</div>' : '') + '</div>';
+  return crumb + '<div class="oc-top"><div class="oc-focus"><div class="oc-nm" style="color:#fff">' + orgEsc(e.name) + '</div><div class="oc-sub">' + orgEsc(e.desig || '') + (e.level ? ' · ' + orgEsc(e.level) : '') + '</div><div class="oc-sub">' + orgEsc(e.dept || '') + '</div>' + orgProjLine(e, '#F7C98B') + '<div class="oc-sub">' + node.kids.length + ' direct · ' + node.total + ' in team</div></div>' +
     (node.kids.length ? '<div class="oc-line"></div><div class="oc-row">' + node.kids.map(box).join('') + '</div>' : '<div class="note" style="margin-top:10px">No direct reports.</div>') + '</div>';
 }
 function orgPrithipHTML(gi) {
   const plans = buchPlans(); if (!plans.length) return '';
-  const sdBox = n => { const src = orgPrSrc(n), clk = src && src.kids.length, nn = x => String(x || '').trim().toLowerCase(), ex = [n.e.buHead].concat(n.e.buExtra || []).map(x => String(x || '').trim()).filter((x, i, a) => x && nn(x) !== 'van littrell' && nn(x) !== nn(n.e.name) && nn(x) !== nn(n.e.mgr) && a.findIndex(y => nn(y) === nn(x)) === i); return '<div class="oc-box' + (clk ? ' oc-click' : '') + '"' + (clk ? ' onclick="orgPrFocus(' + gi + ',' + orgPrId(src) + ')" title="Click to open this team"' : '') + '><div class="oc-nm">' + orgEsc(n.e.name) + '</div><div class="oc-sub">' + orgEsc(n.e.desig || '') + '</div><div class="oc-sub" style="font-weight:700;color:#0D3133">' + orgEsc(n.e.dept || '') + '</div>' + (ex.length ? '<div class="oc-sub" style="color:#8a6d3b">Also reports to ' + orgEsc(ex.join(', ')) + '</div>' : '') + '<div class="oc-ct">SD · ' + orgEsc((n.metaX || '').split(' · ').pop()) + (clk ? ' ▾' : '') + '</div></div>'; };
+  const sdBox = n => { const src = orgPrSrc(n), clk = src && src.kids.length, nn = x => String(x || '').trim().toLowerCase(), ex = [n.e.buHead].concat(n.e.buExtra || []).map(x => String(x || '').trim()).filter((x, i, a) => x && nn(x) !== 'van littrell' && nn(x) !== nn(n.e.name) && nn(x) !== nn(n.e.mgr) && a.findIndex(y => nn(y) === nn(x)) === i); return '<div class="oc-box' + (clk ? ' oc-click' : '') + '"' + (clk ? ' onclick="orgPrFocus(' + gi + ',' + orgPrId(src) + ')" title="Click to open this team"' : '') + '><div class="oc-nm">' + orgEsc(n.e.name) + '</div><div class="oc-sub">' + orgEsc(n.e.desig || '') + '</div><div class="oc-sub" style="font-weight:700;color:#0D3133">' + orgEsc(n.e.dept || '') + '</div>' + orgProjLine(n.e) + (ex.length ? '<div class="oc-sub" style="color:#8a6d3b">Also reports to ' + orgEsc(ex.join(', ')) + '</div>' : '') + '<div class="oc-ct">SD · ' + orgEsc((n.metaX || '').split(' · ').pop()) + (clk ? ' ▾' : '') + '</div></div>'; };
   const van = plans[0].root, pk = van.kids.find(k => k.e && /^prithip/i.test(k.e.name)) || van.kids[0], rest = van.kids.filter(k => k !== pk), e = pk.e;
   const founders = []; [van.label].concat(pk.e.buExtra || []).forEach(x => { if (x && !founders.some(f => f.toLowerCase() === String(x).trim().toLowerCase())) founders.push(String(x).trim()); });
   const fBox = nm => '<div class="oc-focus" style="min-width:150px"><div class="oc-nm" style="color:#fff">' + orgEsc(nm) + '</div></div>';
@@ -5378,7 +5390,7 @@ function orgDrawChart(gi) {
   let top = '';
   if (node) {
     const e = node.e;
-    top = '<div class="oc-focus"><div class="oc-nm" style="color:#fff">' + orgEsc(e.name) + '</div><div class="oc-sub">' + orgEsc(e.desig || '') + (e.level ? ' · ' + orgEsc(e.level) : '') + '</div>' +
+    top = '<div class="oc-focus"><div class="oc-nm" style="color:#fff">' + orgEsc(e.name) + '</div><div class="oc-sub">' + orgEsc(e.desig || '') + (e.level ? ' · ' + orgEsc(e.level) : '') + '</div>' + orgProjLine(e, '#F7C98B') +
       (/notice/i.test(e.status||'') ? '<div class="oc-sub" style="color:#F7C98B;font-weight:700">serving notice</div>' : '') +
       (node.up ? '<div class="oc-sub">' + orgEsc(node.up) + '</div>' : '') +
       '<div class="oc-sub">' + node.kids.length + ' direct · ' + node.total + ' in team</div></div>' + (kids.length ? '<div class="oc-line"></div>' : '');
@@ -5570,7 +5582,7 @@ function orgBuildTrees(view, fd, fb, fp, fl) {
 // a BU Head, a Project or one manager's team; "Levels shown" decides how deep the chart goes.
 // People who have no one reporting inside the levels shown are stacked in a column under their
 // manager, so a wide team stays readable. The same drawing code feeds the preview and the PDF.
-const OPDF_C = { W:132, H:40, GX:12, GY:30, IND:16, SG:6 };
+const OPDF_C = { W:132, H:48, GX:12, GY:30, IND:16, SG:6 };
 let OPDF = { pages: [], cache: null };
 function opdfAllTree() { if (!OPDF.cache) OPDF.cache = orgBuildTrees('all', '', '', ''); return OPDF.cache; }
 function opdfSan(t) { return String(t == null ? '' : t).replace(/[\u2013\u2014]/g, '-').replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"').replace(/[^\x20-\x7E\u00A0-\u00FF]/g, ''); }
@@ -5605,7 +5617,10 @@ function opdfBox(be, n, x, y, d) {
   const fit = (t, sz, bold) => { t = opdfSan(t); let m = C.W - 8; if (be.tw(t, sz, bold) <= m) return t; while (t.length > 3 && be.tw(t + '...', sz, bold) > m) t = t.slice(0, -1); return t + '...'; };
   be.text(fit(nm, 7.6, true), x + 4, y + 11.5, { size: 7.6, bold: true, color: fg });
   be.text(fit(ds, 6.2, false), x + 4, y + 21.5, { size: 6.2, color: sub });
-  be.text(fit(meta, 5.9, false), x + 4, y + 31.5, { size: 5.9, color: notice && !top ? '#9A4B00' : sub });
+  const pj = (!n.synthetic && typeof orgProj === 'function') ? orgProj(e) : '';
+  let my = y + 31.5;
+  if (pj) { be.text(fit('Project: ' + pj, 5.9, true), x + 4, my, { size: 5.9, bold: true, color: fg }); my += 9.5; }
+  be.text(fit(meta, 5.9, false), x + 4, my, { size: 5.9, color: notice && !top ? '#9A4B00' : sub });
 }
 function opdfDraw(be, lay, ox, oy) {
   const C = OPDF_C, bx = ox + lay.bx, cx = bx + C.W / 2;
@@ -9322,7 +9337,7 @@ function renderTalentAcquisition() {
   const dpPipeline = computePipelineByRequirement(dpOpenReqs, TA_CANDIDATES);
   document.getElementById('ta-dp-pipeline-table').innerHTML = dpPipeline.length
     ? '<thead><tr><th>Department</th><th>BU Head</th><th>Hiring Manager</th><th>Open Positions</th><th>Active Pipeline (dept-level)</th></tr></thead><tbody>' +
-      dpPipeline.map(r => `<tr><td>${r.department}</td><td>${r.buHead}</td><td>${r.hiringManager||' - '}</td><td>${r.openPosition}</td><td><strong style="color:${r.pipelineCount===0?'#D13438':r.pipelineCount<3?'#DA8A00':'#107C10'}">${r.pipelineCount}</strong></td></tr>`).join('') + '</tbody>'
+      dpPipeline.map(r => `<tr><td>${r.department}${taReqSubtitle(r)}</td><td>${r.buHead}</td><td>${r.hiringManager||' - '}</td><td>${r.openPosition}</td><td><strong style="color:${r.pipelineCount===0?'#D13438':r.pipelineCount<3?'#DA8A00':'#107C10'}">${r.pipelineCount}</strong></td></tr>`).join('') + '</tbody>'
     : '<tbody><tr><td colspan="5" style="text-align:center;color:#999;padding:12px">No open requisitions match the current filters.</td></tr></tbody>';
 
   // ══════════════════════════════════════════════════════════════════
