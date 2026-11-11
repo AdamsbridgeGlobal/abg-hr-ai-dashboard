@@ -5202,74 +5202,66 @@ function nlBarsSvg(labels, a, b, W, H) {
 function nlCmpWord(cur, prev) { return cur > prev ? 'more than' : (cur < prev ? 'fewer than' : 'the same as'); }
 
 function nlBlocks(D) {
-  const M = D.metrics, T = D.tracker, B = [];
+  const M = D.metrics, T = D.tracker, SEC = { mast: [], num: [], eng: [], rr: [], oth: [], ann: [] };
+  let B = SEC.mast;
   const mname = M.monthName + ' ' + M.y, pl = M.prevLabel, c = M.cur, p = M.prev;
   const cellS = 'padding:6px 8px;border-bottom:1px solid #EEF0EF;font-size:11.5px';
-  // masthead
+  const hdr = (cols, labels, aligns, fs) => '<div style="display:grid;grid-template-columns:' + cols + ';background:' + NL_T + ';color:#fff;font-size:' + (fs || 10.5) + 'px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:6px 8px;border-radius:4px 4px 0 0">' + labels.map((l, i) => '<div' + (aligns && aligns[i] ? ' style="text-align:' + aligns[i] + '"' : '') + '>' + l + '</div>').join('') + '</div>';
+  const title = (t, sub, keep) => nlSection(t, sub).replace('data-keep="1"', keep === false ? '' : 'data-keep="1"');
+  // 1. masthead
   B.push('<div style="background:' + NL_T + ';border-radius:8px;padding:26px 28px;color:#fff;position:relative;overflow:hidden"><div style="position:absolute;right:-30px;top:-30px;width:170px;height:170px;border-radius:50%;background:' + NL_O + ';opacity:.22"></div><div style="font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:' + NL_O + ';font-weight:700">Adamsbridge</div><div style="font-size:40px;font-weight:800;line-height:1.1;margin-top:6px">HR Newsletter</div><div style="font-size:21px;margin-top:4px;color:#F7C98B;font-weight:600">' + nlEsc(mname) + '</div><div style="font-size:11.5px;color:#C7D3D1;margin-top:12px">People, hiring and culture at a glance &middot; prepared by HR</div></div>');
-  // hero strip
-  const hero = D.allPhotos.slice(0, 3);
-  if (hero.length) { const w = (NL_CW - 20) / 3; B.push('<div style="display:flex;gap:10px">' + hero.map(x => nlBg(x, 'width:' + w + 'px;height:150px;border-radius:6px')).join('') + '</div>'); }
-  // R&R
+  // Order in the PDF: masthead, organisation numbers, engagement and culture, Rewards & Recognition, other updates, annexure
+  B = SEC.rr;
   if (T.rr.length) {
-    B.push(nlSection('Rewards & Recognition', 'Recognised in ' + mname));
-    const col = '170px 150px 1fr';
-    B.push('<div data-keep="1" style="display:grid;grid-template-columns:' + col + ';background:' + NL_T + ';color:#fff;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:6px 8px;border-radius:4px 4px 0 0"><div>Award</div><div>Name</div><div>Reason</div></div>');
-    T.rr.forEach(r => B.push('<div data-row="1" style="display:grid;grid-template-columns:' + col + ';padding:7px 8px;border-bottom:1px solid #EEF0EF;font-size:12px;line-height:1.45"><div style="font-weight:700;color:' + NL_T + '">' + nlEsc(r.award) + '</div><div><strong>' + nlEsc(r.name) + '</strong><div style="font-size:10.5px;color:#666">' + nlEsc([r.desig, r.dept].filter(Boolean).join(' · ')) + '</div></div><div>' + nlEsc(r.reason) + '</div></div>'));
+    const col = '170px 150px 1fr', rowH = r => '<div style="display:grid;grid-template-columns:' + col + ';padding:7px 8px;border-bottom:1px solid #EEF0EF;font-size:12px;line-height:1.45"><div style="font-weight:700;color:' + NL_T + '">' + nlEsc(r.award) + '</div><div><strong>' + nlEsc(r.name) + '</strong><div style="font-size:10.5px;color:#666">' + nlEsc([r.desig, r.dept].filter(Boolean).join(' · ')) + '</div></div><div>' + nlEsc(r.reason) + '</div></div>';
+    for (let i = 0; i < T.rr.length; i += 12) B.push('<div data-keep="0">' + (i === 0 ? nlSection('Rewards & Recognition', 'Recognised in ' + mname).replace('data-keep="1"', '') + '<div style="height:8px"></div>' : '') + hdr(col, ['Award', 'Name', 'Reason']) + T.rr.slice(i, i + 12).map(rowH).join('') + '</div>');
   }
-  // At a glance
-  B.push(nlSection('At a glance', mname + (pl ? ', compared with ' + pl : '')));
-  B.push('<div style="display:flex;gap:10px">' + nlTile('Headcount, month end', nlNum(c.chc), nlDelta(c.chc, p && p.chc, true, pl)) + nlTile('Joined', nlNum(c.joins), nlDelta(c.joins, p && p.joins, true, pl)) + nlTile('Left', nlNum(c.exits), nlDelta(c.exits, p && p.exits, false, pl)) + nlTile('Monthly attrition', c.monthly_pct.toFixed(2) + '%', p ? nlDelta(c.monthly_pct, p.monthly_pct, false, pl).replace(/(\d[\d,]*)<\/span>/, '$1 pts</span>') : '') + '</div>');
-  // Headcount & hiring
-  B.push(nlSection('Headcount and hiring'));
+  B = SEC.num;
+  B.push('<div>' + nlSection('At a glance', mname + (pl ? ', compared with ' + pl : '')).replace('data-keep="1"', '') + '<div style="display:flex;gap:10px;margin-top:10px">' + nlTile('Headcount, month end', nlNum(c.chc), nlDelta(c.chc, p && p.chc, true, pl)) + nlTile('Joined', nlNum(c.joins), nlDelta(c.joins, p && p.joins, true, pl)) + nlTile('Left', nlNum(c.exits), nlDelta(c.exits, p && p.exits, false, pl)) + nlTile('Monthly attrition', c.monthly_pct.toFixed(2) + '%', p ? nlDelta(c.monthly_pct, p.monthly_pct, false, pl).replace(/(\d[\d,]*)<\/span>/, '$1 pts</span>') : '') + '</div></div>');
+  // 4. Headcount and hiring
   const dh = p ? c.chc - p.chc : 0;
-  let s1 = 'Headcount closed ' + M.monthName + ' at <strong>' + nlNum(c.chc) + '</strong>' + (p ? (dh === 0 ? ', unchanged from ' + pl : ', ' + (dh > 0 ? 'up ' : 'down ') + nlNum(Math.abs(dh)) + ' (' + (Math.abs(dh) / p.chc * 100).toFixed(1) + '%) from ' + pl) : '') + '.';
-  let s2 = '<strong>' + nlNum(c.joins) + '</strong> people joined' + (p ? ', ' + nlCmpWord(c.joins, p.joins) + ' the ' + nlNum(p.joins) + ' who joined in ' + pl : '') + '.';
-  B.push('<div style="font-size:13px;line-height:1.7">' + s1 + ' ' + s2 + ' Interns are not counted in headcount.</div>');
+  const s1 = 'Headcount closed ' + M.monthName + ' at <strong>' + nlNum(c.chc) + '</strong>' + (p ? (dh === 0 ? ', unchanged from ' + pl : ', ' + (dh > 0 ? 'up ' : 'down ') + nlNum(Math.abs(dh)) + ' (' + (Math.abs(dh) / p.chc * 100).toFixed(1) + '%) from ' + pl) : '') + '.';
+  const s2 = '<strong>' + nlNum(c.joins) + '</strong> people joined' + (p ? ', ' + nlCmpWord(c.joins, p.joins) + ' the ' + nlNum(p.joins) + ' who joined in ' + pl : '') + '.';
+  B.push('<div data-keep="1">' + nlSection('Headcount and hiring').replace('data-keep="1"', '') + '<div style="font-size:13px;line-height:1.7;margin-top:8px">' + s1 + ' ' + s2 + ' Interns are not counted in headcount.</div></div>');
   const tl = M.trend.map(r => r.month.split(' ')[0]);
   if (M.trend.length > 1) B.push('<div style="display:flex;gap:14px"><div style="flex:1;border:1px solid #E1E5E3;border-radius:6px;padding:8px"><div style="font-size:11.5px;font-weight:700;color:' + NL_T + '">Headcount, last ' + M.trend.length + ' months</div>' + nlLineSvg(tl, M.trend.map(r => r.chc), 340, 190) + '</div><div style="flex:1;border:1px solid #E1E5E3;border-radius:6px;padding:8px"><div style="font-size:11.5px;font-weight:700;color:' + NL_T + '">Joined <span style="display:inline-block;width:9px;height:9px;background:' + NL_T + '"></span> and left <span style="display:inline-block;width:9px;height:9px;background:' + NL_O + '"></span></div>' + nlBarsSvg(tl, M.trend.map(r => r.joins), M.trend.map(r => r.exits), 340, 190) + '</div></div>');
   if (M.depts.length) {
-    B.push('<div data-keep="1" style="font-size:12.5px;font-weight:700;color:' + NL_T + ';margin-top:2px">Movement by department, ' + nlEsc(M.monthName) + '</div>');
     const col = '1fr 70px 70px 70px';
-    B.push('<div data-keep="1" style="display:grid;grid-template-columns:' + col + ';background:' + NL_T + ';color:#fff;font-size:10.5px;font-weight:700;text-transform:uppercase;padding:6px 8px;border-radius:4px 4px 0 0"><div>Department</div><div style="text-align:right">Joined</div><div style="text-align:right">Left</div><div style="text-align:right">Net</div></div>');
-    M.depts.slice(0, 14).forEach(d => { const net = d.j - d.x; B.push('<div data-row="1" style="display:grid;grid-template-columns:' + col + ';' + cellS + '"><div>' + nlEsc(d.dept) + '</div><div style="text-align:right">' + d.j + '</div><div style="text-align:right">' + d.x + '</div><div style="text-align:right;font-weight:700;color:' + (net > 0 ? '#107C10' : net < 0 ? '#D13438' : '#73847B') + '">' + (net > 0 ? '+' : '') + net + '</div></div>'); });
+    B.push('<div><div style="font-size:12.5px;font-weight:700;color:' + NL_T + ';margin-bottom:6px">Movement by department, ' + nlEsc(M.monthName) + '</div>' + hdr(col, ['Department', 'Joined', 'Left', 'Net'], ['', 'right', 'right', 'right']) + M.depts.slice(0, 14).map(d => { const net = d.j - d.x; return '<div style="display:grid;grid-template-columns:' + col + ';' + cellS + '"><div>' + nlEsc(d.dept) + '</div><div style="text-align:right">' + d.j + '</div><div style="text-align:right">' + d.x + '</div><div style="text-align:right;font-weight:700;color:' + (net > 0 ? '#107C10' : net < 0 ? '#D13438' : '#73847B') + '">' + (net > 0 ? '+' : '') + net + '</div></div>'; }).join('') + '</div>');
   }
-  // Attrition
-  B.push(nlSection('Attrition'));
-  B.push('<div style="font-size:13px;line-height:1.7"><strong>' + nlNum(c.exits) + '</strong> people left in ' + nlEsc(M.monthName) + ' (' + c.vol + ' voluntary, ' + c.invol + ' involuntary)' + (p ? ', ' + nlCmpWord(c.exits, p.exits) + ' the ' + nlNum(p.exits) + ' who left in ' + pl : '') + '. Voluntary attrition, annualised for the year so far, stands at <strong>' + c.vol_ann_pct.toFixed(1) + '%</strong> against the ' + DM_TARGET + '% annual target.</div>');
+  // 5. Attrition
+  B.push('<div data-keep="1">' + nlSection('Attrition').replace('data-keep="1"', '') + '<div style="font-size:13px;line-height:1.7;margin-top:8px"><strong>' + nlNum(c.exits) + '</strong> people left in ' + nlEsc(M.monthName) + ' (' + c.vol + ' voluntary, ' + c.invol + ' involuntary)' + (p ? ', ' + nlCmpWord(c.exits, p.exits) + ' the ' + nlNum(p.exits) + ' who left in ' + pl : '') + '. Voluntary attrition, annualised for the year so far, stands at <strong>' + c.vol_ann_pct.toFixed(1) + '%</strong> against the ' + DM_TARGET + '% annual target.</div></div>');
   const rowsA = [['Total exits', nlNum(c.exits), p ? nlNum(p.exits) : ''], ['Voluntary exits', nlNum(c.vol), p ? nlNum(p.vol) : ''], ['Monthly attrition', c.monthly_pct.toFixed(2) + '%', p ? p.monthly_pct.toFixed(2) + '%' : ''], ['Year to date, annualised (all exits)', c.ann_pct.toFixed(1) + '%', p ? p.ann_pct.toFixed(1) + '%' : ''], ['Year to date, annualised (voluntary)', c.vol_ann_pct.toFixed(1) + '%', p ? p.vol_ann_pct.toFixed(1) + '%' : '']];
-  B.push('<div data-keep="1" style="display:grid;grid-template-columns:1fr 100px 100px;background:' + NL_T + ';color:#fff;font-size:10.5px;font-weight:700;text-transform:uppercase;padding:6px 8px;border-radius:4px 4px 0 0"><div>Measure</div><div style="text-align:right">' + nlEsc(M.monthName) + '</div><div style="text-align:right">' + nlEsc(pl || '') + '</div></div>');
-  rowsA.forEach(r => B.push('<div data-row="1" style="display:grid;grid-template-columns:1fr 100px 100px;' + cellS + '"><div>' + r[0] + '</div><div style="text-align:right;font-weight:700">' + r[1] + '</div><div style="text-align:right;color:#666">' + r[2] + '</div></div>'));
+  B.push('<div>' + hdr('1fr 100px 100px', ['Measure', nlEsc(M.monthName), nlEsc(pl || '')], ['', 'right', 'right']) + rowsA.map(r => '<div style="display:grid;grid-template-columns:1fr 100px 100px;' + cellS + '"><div>' + r[0] + '</div><div style="text-align:right;font-weight:700">' + r[1] + '</div><div style="text-align:right;color:#666">' + r[2] + '</div></div>').join('') + '</div>');
   if (M.reasons.length) {
     const mx = Math.max.apply(null, M.reasons.map(r => r.count));
-    B.push('<div style="margin-top:6px"><div style="font-size:12.5px;font-weight:700;color:' + NL_T + ';margin-bottom:6px">Reasons for leaving, ' + nlEsc(M.monthName) + '</div>' + M.reasons.map(r => '<div style="display:flex;align-items:center;gap:10px;font-size:12px;margin-bottom:5px"><div style="width:230px">' + nlEsc(r.reason) + '</div><div style="flex:1;background:#F0F2F1;border-radius:3px;height:14px"><div style="width:' + Math.round(r.count / mx * 100) + '%;height:14px;background:' + NL_O + ';border-radius:3px"></div></div><div style="width:28px;text-align:right;font-weight:700">' + r.count + '</div></div>').join('') + '</div>');
+    B.push('<div><div style="font-size:12.5px;font-weight:700;color:' + NL_T + ';margin-bottom:6px">Reasons for leaving, ' + nlEsc(M.monthName) + '</div>' + M.reasons.map(r => '<div style="display:flex;align-items:center;gap:10px;font-size:12px;margin-bottom:5px"><div style="width:230px">' + nlEsc(r.reason) + '</div><div style="flex:1;background:#F0F2F1;border-radius:3px;height:14px"><div style="width:' + Math.round(r.count / mx * 100) + '%;height:14px;background:' + NL_O + ';border-radius:3px"></div></div><div style="width:28px;text-align:right;font-weight:700">' + r.count + '</div></div>').join('') + '</div>');
   }
-  // Engagement
+  B = SEC.oth;
+  if (T.other.length) {
+    T.other.forEach((o, i) => B.push('<div' + (i === 0 ? '' : '') + '>' + (i === 0 ? nlSection('Other updates').replace('data-keep="1"', '') + '<div style="height:8px"></div>' : '') + '<div style="border:1px solid #E1E5E3;border-radius:6px;padding:9px 12px"><div style="display:flex;gap:8px;align-items:center"><div style="font-size:13.5px;font-weight:800;color:' + NL_T + '">' + nlEsc(o.head) + '</div>' + (o.cat ? '<div style="font-size:10px;background:#F7E7CF;color:#8A5A12;border-radius:10px;padding:1px 8px;font-weight:700">' + nlEsc(o.cat) + '</div>' : '') + '</div><div style="font-size:12.5px;line-height:1.55;margin-top:3px">' + nlEsc(o.detail) + '</div></div></div>'));
+  }
+  B = SEC.eng;
   if (D.events.length || D.leftover.length) {
-    B.push(nlSection('Engagement and culture', 'What the organisation did together in ' + mname));
+    let first = true;
+    const head = () => { if (!first) return ''; first = false; return nlSection('Engagement and culture', 'What the organisation did together in ' + mname).replace('data-keep="1"', '') + '<div style="height:10px"></div>'; };
     D.events.forEach(ev => {
       const meta = [nlFmtDate(ev.dateObj), ev.loc, ev.dept, ev.n ? nlNum(ev.n) + ' participants' : '', ev.cat].filter(Boolean).join(' · ');
-      B.push('<div data-keep="' + ((ev.photos || []).length ? 1 : 0) + '" style="border-left:4px solid ' + NL_O + ';padding-left:12px"><div style="font-size:15px;font-weight:800;color:' + NL_T + '">' + nlEsc(ev.name) + '</div><div style="font-size:11px;color:#666;margin:2px 0 4px">' + nlEsc(meta) + '</div>' + (ev.sum ? '<div style="font-size:12.5px;line-height:1.55">' + nlEsc(ev.sum) + '</div>' : '') + '</div>');
-      if ((ev.photos || []).length) B.push(nlCollage(ev.photos.slice(0, 9), NL_CW));
+      B.push('<div>' + head() + '<div style="border-left:4px solid ' + NL_O + ';padding-left:12px;margin-bottom:8px"><div style="font-size:15px;font-weight:800;color:' + NL_T + '">' + nlEsc(ev.name) + '</div><div style="font-size:11px;color:#666;margin:2px 0 4px">' + nlEsc(meta) + '</div>' + (ev.sum ? '<div style="font-size:12.5px;line-height:1.55">' + nlEsc(ev.sum) + '</div>' : '') + '</div>' + ((ev.photos || []).length ? nlCollage(ev.photos.slice(0, 9), NL_CW) : '') + '</div>');
     });
-    if (D.leftover.length) {
-      B.push('<div data-keep="1" style="font-size:15px;font-weight:800;color:' + NL_T + ';border-left:4px solid ' + NL_O + ';padding-left:12px">More moments</div>');
-      for (let i = 0; i < D.leftover.length; i += 9) { const ch = D.leftover.slice(i, i + 9); B.push(nlCollage(ch, NL_CW) + '<div style="font-size:10.5px;color:#666;margin-top:4px">' + ch.map(x => nlEsc(String(x.name).replace(/\.[a-z0-9]+$/i, '').replace(/[_]+/g, ' ').replace(/[\s\-]*\d+$/, ''))).filter((v, k, a) => v && a.indexOf(v) === k).join(' &nbsp;&middot;&nbsp; ') + '</div>'); }
+    for (let i = 0; i < D.leftover.length; i += 9) {
+      const ch = D.leftover.slice(i, i + 9), caps = ch.map(x => nlEsc(String(x.name).replace(/\.[a-z0-9]+$/i, '').replace(/[_]+/g, ' ').replace(/[\s\-]*\d+$/, ''))).filter((v, k, a) => v && a.indexOf(v) === k).join(' &nbsp;&middot;&nbsp; ');
+      B.push('<div>' + head() + (i === 0 ? '<div style="font-size:15px;font-weight:800;color:' + NL_T + ';border-left:4px solid ' + NL_O + ';padding-left:12px;margin-bottom:8px">More moments</div>' : '') + nlCollage(ch, NL_CW) + '<div style="font-size:10.5px;color:#666;margin-top:4px">' + caps + '</div></div>');
     }
   }
-  // Other updates
-  if (T.other.length) {
-    B.push(nlSection('Other updates'));
-    T.other.forEach(o => B.push('<div style="border:1px solid #E1E5E3;border-radius:6px;padding:9px 12px"><div style="display:flex;gap:8px;align-items:center"><div style="font-size:13.5px;font-weight:800;color:' + NL_T + '">' + nlEsc(o.head) + '</div>' + (o.cat ? '<div style="font-size:10px;background:#F7E7CF;color:#8A5A12;border-radius:10px;padding:1px 8px;font-weight:700">' + nlEsc(o.cat) + '</div>' : '') + '</div><div style="font-size:12.5px;line-height:1.55;margin-top:3px">' + nlEsc(o.detail) + '</div></div>'));
-  }
-  // Annexure
+  B = SEC.ann;
   if (M.exits.length) {
-    B.push(nlSection('Annexure: people who left in ' + mname, M.exits.length + ' employee' + (M.exits.length === 1 ? '' : 's') + ', in order of last working day'));
     const col = '24px 152px 108px 124px 72px 48px 66px 120px';
-    B.push('<div data-keep="1" style="display:grid;grid-template-columns:' + col + ';background:' + NL_T + ';color:#fff;font-size:9.5px;font-weight:700;text-transform:uppercase;padding:6px 4px;border-radius:4px 4px 0 0"><div>#</div><div>Name</div><div>Department</div><div>Designation</div><div>Last day</div><div>Tenure</div><div>Type</div><div>Reason</div></div>');
-    M.exits.forEach((e, i) => { const rs = normalizeExitReason(e.resignReason); B.push('<div data-row="1" style="display:grid;grid-template-columns:' + col + ';padding:5px 4px;border-bottom:1px solid #EEF0EF;font-size:10.5px;line-height:1.35;overflow-wrap:anywhere"><div>' + (i + 1) + '</div><div style="font-weight:700">' + nlEsc(e.name) + '</div><div>' + nlEsc(e.dept) + '</div><div>' + nlEsc(e.desig) + '</div><div>' + nlFmtDate(e.exitDate) + '</div><div>' + nlTenure(e.doj, e.exitDate) + '</div><div>' + nlEsc(e.resignType) + '</div><div>' + (/not recorded/i.test(rs) ? '' : nlEsc(rs)) + '</div></div>'); });
+    B.push('<div data-keep="1" data-break="1">' + nlSection('Annexure: people who left in ' + mname, M.exits.length + ' employee' + (M.exits.length === 1 ? '' : 's') + ', in order of last working day').replace('data-keep="1"', '') + '</div>');
+    B.push('<div data-keep="1" data-th="annex">' + hdr(col, ['#', 'Name', 'Department', 'Designation', 'Last day', 'Tenure', 'Type', 'Reason'], null, 9.5) + '</div>');
+    M.exits.forEach((e, i) => { const rs = normalizeExitReason(e.resignReason); B.push('<div data-row="1" data-hdr="annex" style="display:grid;grid-template-columns:' + col + ';padding:5px 4px;border-bottom:1px solid #EEF0EF;font-size:10.5px;line-height:1.35;overflow-wrap:anywhere"><div>' + (i + 1) + '</div><div style="font-weight:700">' + nlEsc(e.name) + '</div><div>' + nlEsc(e.dept) + '</div><div>' + nlEsc(e.desig) + '</div><div>' + nlFmtDate(e.exitDate) + '</div><div>' + nlTenure(e.doj, e.exitDate) + '</div><div>' + nlEsc(e.resignType) + '</div><div>' + (/not recorded/i.test(rs) ? '' : nlEsc(rs)) + '</div></div>'); });
   }
-  return B;
+  return [].concat(SEC.mast, SEC.num, SEC.eng, SEC.rr, SEC.oth, SEC.ann);
 }
 function nlPaginate(blocks, D) {
   const probe = document.createElement('div'); probe.style.cssText = 'position:fixed;left:-9999px;top:0;width:' + NL_CW + 'px;font-family:"Segoe UI",Calibri,Arial,sans-serif;color:#222';
@@ -5277,11 +5269,13 @@ function nlPaginate(blocks, D) {
   const kids = [...probe.querySelectorAll('.nl-b')].map(el => ({ h: el.getBoundingClientRect().height + (el.getAttribute('data-r') === '1' ? 0 : 12), keep: !!el.firstElementChild && el.firstElementChild.getAttribute('data-keep') === '1' }));
   document.body.removeChild(probe);
   const caps = [NL_PH - 34 - 30, NL_PH - 34 - 30 - 40]; // page 1 has no running header; later pages do
+  const thIdx = blocks.findIndex(b => /data-th="annex"/.test(b)), thHtml = thIdx >= 0 ? blocks[thIdx] : '', thH = thIdx >= 0 ? kids[thIdx].h : 0;
   const pages = [[]]; let used = 0;
   blocks.forEach((b, i) => {
+    if (/^<div data-keep="1" data-break="1"/.test(b) && pages[pages.length - 1].length) { pages.push([]); used = 0; }
     const cap = pages.length === 1 ? caps[0] : caps[1];
-    let need = kids[i].h; if (kids[i].keep && blocks[i + 1] && i + 1 < blocks.length) need += kids[i + 1].h;
-    if (used + need > cap && pages[pages.length - 1].length) { pages.push([]); used = 0; }
+    let need = kids[i].h; for (let j = i; kids[j].keep && j + 1 < blocks.length && j < i + 3; j++) need += kids[j + 1].h;
+    if (used + need > cap && pages[pages.length - 1].length) { pages.push([]); used = 0; if (/data-hdr="annex"/.test(b)) { pages[pages.length - 1].push(thHtml.replace('data-keep="1"', '')); used += thH; } }
     pages[pages.length - 1].push(b); used += kids[i].h;
   });
   const total = pages.length, ttl = D.metrics.monthName + ' ' + D.metrics.y;
