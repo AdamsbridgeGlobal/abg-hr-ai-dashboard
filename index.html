@@ -359,7 +359,7 @@
   <div class="card" style="background:#F5F4F2;border:1.5px solid #73847B">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <span style="font-size:.82rem;color:#0D3133;font-weight:700">Report:</span>
-      <button class="rep-pill on" id="rep-pill-prep-lead" onclick="repSelect('prep-lead')">Leadership one-pager</button><button class="rep-pill" id="rep-pill-prep-attr" onclick="repSelect('prep-attr')">Attrition report</button><button class="rep-pill" id="rep-pill-prep-dm" onclick="repSelect('prep-dm')">Attrition by department and manager</button><button class="rep-pill" id="rep-pill-prep-mt" onclick="repSelect('prep-mt')">Manager attrition table</button><button class="rep-pill" id="rep-pill-prep-esat" onclick="repSelect('prep-esat')">Survey & culture report</button><button class="rep-pill" id="rep-pill-prep-ta" onclick="repSelect('prep-ta')">Talent Acquisition report</button><button class="rep-pill" id="rep-pill-porgpdf" onclick="repSelect('porgpdf')">Org chart</button><button class="rep-pill" id="rep-pill-p11" onclick="repSelect('p11')">Department health report</button>
+      <button class="rep-pill" id="rep-pill-prep-nl" onclick="repSelect('prep-nl')">Monthly newsletter</button><button class="rep-pill on" id="rep-pill-prep-lead" onclick="repSelect('prep-lead')">Leadership one-pager</button><button class="rep-pill" id="rep-pill-prep-attr" onclick="repSelect('prep-attr')">Attrition report</button><button class="rep-pill" id="rep-pill-prep-dm" onclick="repSelect('prep-dm')">Attrition by department and manager</button><button class="rep-pill" id="rep-pill-prep-mt" onclick="repSelect('prep-mt')">Manager attrition table</button><button class="rep-pill" id="rep-pill-prep-esat" onclick="repSelect('prep-esat')">Survey & culture report</button><button class="rep-pill" id="rep-pill-prep-ta" onclick="repSelect('prep-ta')">Talent Acquisition report</button><button class="rep-pill" id="rep-pill-porgpdf" onclick="repSelect('porgpdf')">Org chart</button><button class="rep-pill" id="rep-pill-p11" onclick="repSelect('p11')">Department health report</button>
     </div>
   </div>
 <div class="rep-sub" id="prep-lead">
@@ -416,6 +416,16 @@
     <span id="rep-esat-status" style="font-size:.78rem;color:#888"></span>
   </div></div>
   <div id="rep-esat-preview"></div>
+</div>
+<div class="rep-sub" id="prep-nl">
+  <div class="tab-banner"><strong>Monthly HR newsletter.</strong> choose the month, build it, check the preview, then download one PDF. It uses the Employee report for the numbers, the HR newsletter tracker for awards, events and updates, and the month folder in Employee Engagement Pics for photos.</div>
+  <div class="card"><div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <label style="font-size:.82rem;color:#0D3133;font-weight:700">Month:</label><select id="nl-month" style="padding:8px 14px;border:1.5px solid #73847B;border-radius:6px;font-family:inherit;font-size:.85rem;font-weight:700"></select>
+    <button onclick="nlBuild()" style="padding:9px 20px;background:#0D3133;color:#fff;border:none;border-radius:6px;font-family:inherit;font-weight:700;font-size:.85rem;cursor:pointer">Build newsletter</button>
+    <button id="nl-dl" disabled onclick="nlDownload()" style="padding:9px 20px;background:#E69F50;color:#fff;border:none;border-radius:6px;font-family:inherit;font-weight:700;font-size:.85rem;cursor:pointer">Download PDF</button>
+    <span id="nl-status" style="font-size:.78rem;color:#888"></span>
+  </div></div>
+  <div id="nl-preview"></div>
 </div>
 <div class="rep-sub" id="prep-ta">
   <div class="tab-banner"><strong>Talent Acquisition report.</strong> choose a department and a month or half-month, check the preview, then download.</div>
@@ -4723,7 +4733,7 @@ function onSharedFilterChange() {
   renderBuHeadViews();
 }
 let REP_CURRENT = 'prep-lead';
-const REP_IDS = ['prep-lead','prep-attr','prep-dm','prep-mt','prep-esat','prep-ta','porgpdf','p11'];
+const REP_IDS = ['prep-nl','prep-lead','prep-attr','prep-dm','prep-mt','prep-esat','prep-ta','porgpdf','p11'];
 function repScope(key) { const d = (document.getElementById('rep-' + key + '-dept') || {}).value || ''; return d; }
 function repInitDepts() {
   const ds = [...new Set(ALL_EMPLOYEES_FULL.filter(e => isCurrentlyActiveStatus(e.status)).map(e => e.dept).filter(Boolean))].sort();
@@ -4738,7 +4748,8 @@ function repInitDepts() {
 function repRerender() { try { repRenderCurrent(); } catch (e) { console.error('report render failed', e); } }
 function repRenderCurrent() {
   const id = REP_CURRENT;
-  if (id === 'prep-lead') repRenderLead();
+  if (id === 'prep-nl') { nlInitMonths(); nlRenderPreview(); }
+  else if (id === 'prep-lead') repRenderLead();
   else if (id === 'prep-attr') repRenderAttr();
   else if (id === 'prep-dm') repRenderDm();
   else if (id === 'prep-mt') repRenderMt();
@@ -5042,6 +5053,298 @@ function repRenderMt() {
   const scope = [dept, BU_FILTER, mg ? 'manager: ' + msel.options[msel.selectedIndex].text : ''].filter(Boolean).join(' / ') || 'the whole organisation';
   const note = `<div style="font-size:.68rem;color:#555;margin:10px 0;line-height:1.55"><b>How to read it.</b> One row per manager who is active today, under their department. <b>OHC</b> is the opening headcount of the manager's team at the start of the period. <b>Joiners</b> are people who joined the team in the period. <b>Attrited (voluntary)</b> counts voluntary exits only, and <b>Other exits</b> are involuntary exits, so OHC + Joiners &minus; Attrited &minus; Other exits = <b>CHC</b> (closing headcount). <b>Monthly %</b> = voluntary exits in the month &divide; opening headcount of that month. <b>YTD %</b> = voluntary exits since January &divide; average opening headcount to date. <b>Annualised %</b> = YTD % &times; 12 &divide; months elapsed. Teams under 10 people can swing sharply from one leaver. Interns are not counted.</div>`;
   host.innerHTML = `<div data-w="900" style="background:#fff;padding:18px 20px;border:1px solid #E9EBEA;border-radius:8px;max-width:900px;margin:0 auto">${repHeader('Manager attrition table (voluntary), ' + year, scope + ' &middot; ' + periodTxt)}${dmTable(head, rows, { left: 2 })}${note}${repFooter()}</div>`;
+}
+
+// ── MONTHLY HR NEWSLETTER ─────────────────────────────────────────────
+// Builds a multi-page A4 newsletter for one month: Rewards & Recognition, headcount, hiring, attrition
+// (all calculated from the Employee report), engagement events and photos (from the Employee Engagement Pics
+// month folder and the HR_Newsletter_Tracker workbook), other updates, and an annexure of the month's exits.
+const NL_PHOTOS_URL = 'https://adamsbridgenet-my.sharepoint.com/:f:/g/personal/bharathkumar_mayakrishnan_adamsbridge_com/IgDEVlCLuBugSKhDIwWt2OO7AUWt0inYDvGlNmvg20RUMyk?e=6bG0iD';
+const NL_TRACKER_URL = 'https://adamsbridgenet-my.sharepoint.com/:x:/g/personal/bharathkumar_mayakrishnan_adamsbridge_com/IQAGmOh48fkJQ7GTWWg1ItbPAbqjXeYdXg8ZigJWS3WGonU?e=DjaFrk';
+const NL_MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const NL_MONFULL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const NL_PW = 794, NL_PH = 1123, NL_CW = 714;
+let NL = { tracker: null, data: null, pages: [], busy: false };
+const nlEsc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const nlNorm = s => String(s || '').toLowerCase().replace(/\.[a-z0-9]{2,5}$/, '').replace(/[^a-z0-9]+/g, ' ').trim();
+const nlNum = n => Number(n).toLocaleString('en-IN');
+
+function nlInitMonths() {
+  const sel = document.getElementById('nl-month'); if (!sel || sel.options.length) return;
+  const now = new Date(); let y = now.getFullYear(), m = now.getMonth();
+  for (let i = 0; i < 13; i++) { const o = document.createElement('option'); o.value = y + '-' + (m + 1); o.textContent = NL_MONFULL[m] + ' ' + y; sel.appendChild(o); m--; if (m < 0) { m = 11; y--; } }
+  sel.selectedIndex = 1; // the month just finished
+}
+function nlParseMonthName(name) {
+  const s = String(name || '').toLowerCase().trim();
+  let mt = s.match(/([a-z]{3,9})\W*'?\s*(\d{4}|\d{2})\b/);
+  if (mt) { const k = NL_MON.findIndex(x => mt[1].startsWith(x.toLowerCase())); if (k >= 0) { let yy = +mt[2]; if (yy < 100) yy += 2000; return { y: yy, m: k + 1 }; } }
+  mt = s.match(/(\d{4})\W+(\d{1,2})\b/); if (mt && +mt[2] >= 1 && +mt[2] <= 12) return { y: +mt[1], m: +mt[2] };
+  mt = s.match(/\b(\d{1,2})\W+(\d{4})\b/); if (mt && +mt[1] >= 1 && +mt[1] <= 12) return { y: +mt[2], m: +mt[1] };
+  return null;
+}
+
+// ---------- loading from SharePoint (Microsoft Graph) ----------
+function nlShareId(url) { return 'u!' + btoa(url).replace(/=+$/, '').replace(/\//g, '_').replace(/\+/g, '-'); }
+async function nlGet(url, token) { const r = await fetch(url, { headers: { Authorization: 'Bearer ' + token } }); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }
+async function nlAllPages(url, token) { let out = [], u = url, guard = 0; while (u && guard++ < 10) { const j = await nlGet(u, token); out = out.concat(j.value || []); u = j['@odata.nextLink'] || null; } return out; }
+
+async function nlLoadTracker(token) {
+  const id = nlShareId(NL_TRACKER_URL);
+  const meta = await nlGet('https://graph.microsoft.com/v1.0/shares/' + id + '/driveItem?$select=id,name,parentReference', token);
+  const base = (meta.parentReference && meta.parentReference.driveId) ? 'https://graph.microsoft.com/v1.0/drives/' + meta.parentReference.driveId + '/items/' + meta.id : 'https://graph.microsoft.com/v1.0/shares/' + id + '/driveItem';
+  const read = async name => { try { const j = await nlGet(base + "/workbook/worksheets('" + encodeURIComponent(name) + "')/usedRange(valuesOnly=true)?$select=values", token); return j.values || []; } catch (e) { console.warn('Newsletter tracker: sheet "' + name + '" could not be read (' + e.message + ')'); return []; } };
+  const tab = (vals, spec) => {
+    if (!vals.length) return [];
+    const hd = vals[0].map(h => String(h || '').trim().toLowerCase());
+    const ix = {}; Object.keys(spec).forEach(k => { ix[k] = hd.findIndex(h => h.startsWith(spec[k])); });
+    return vals.slice(1).map(r => { const o = {}; Object.keys(ix).forEach(k => { o[k] = ix[k] >= 0 ? r[ix[k]] : ''; }); return o; })
+      .filter(o => String(o.inc || '').trim().toLowerCase() === 'yes');
+  };
+  const ev = tab(await read('Engagement Events'), { date: 'event date', name: 'event name', cat: 'category', loc: 'location', dept: 'department', n: 'participants', sum: 'summary', inc: 'include' });
+  const rr = tab(await read('Rewards & Recognition'), { date: 'month', award: 'award', name: 'employee name', desig: 'designation', dept: 'department', reason: 'reason', inc: 'include' });
+  const ot = tab(await read('Other Updates'), { date: 'month', head: 'heading', detail: 'detail', cat: 'category', inc: 'include' });
+  return { events: ev, rr, other: ot };
+}
+function nlBlobToImg(blob, max) {
+  return new Promise(res => {
+    const url = URL.createObjectURL(blob), img = new Image();
+    img.onload = () => { const s = Math.min(1, max / Math.max(img.width, img.height)), c = document.createElement('canvas'); c.width = Math.max(1, Math.round(img.width * s)); c.height = Math.max(1, Math.round(img.height * s)); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url); res({ url: c.toDataURL('image/jpeg', 0.82), w: c.width, h: c.height }); };
+    img.onerror = () => { URL.revokeObjectURL(url); res(null); };
+    img.src = url;
+  });
+}
+async function nlLoadPhotos(token, y, m) {
+  const id = nlShareId(NL_PHOTOS_URL);
+  const kids = await nlAllPages('https://graph.microsoft.com/v1.0/shares/' + id + '/driveItem/children?$select=id,name,folder,parentReference&$top=200', token);
+  const folder = kids.filter(k => k.folder).find(k => { const p = nlParseMonthName(k.name); return p && p.y === y && p.m === m; });
+  if (!folder) return { folder: '', photos: [] };
+  const d = (folder.parentReference && folder.parentReference.driveId) || '';
+  const files = (await nlAllPages('https://graph.microsoft.com/v1.0/drives/' + d + '/items/' + folder.id + '/children?$select=id,name,file&$expand=thumbnails($select=large)&$top=200', token))
+    .filter(f => f.file && /\.(jpe?g|png|webp|gif|bmp)$/i.test(f.name || '')).sort((a, b) => String(a.name).localeCompare(String(b.name), undefined, { numeric: true })).slice(0, 40);
+  const out = new Array(files.length);
+  const one = async (f, i) => {
+    let blob = null;
+    try { const t = f.thumbnails && f.thumbnails[0] && f.thumbnails[0].large && f.thumbnails[0].large.url; if (t) { const r = await fetch(t); if (r.ok) blob = await r.blob(); } } catch (e) {}
+    if (!blob) { try { const r = await fetch('https://graph.microsoft.com/v1.0/drives/' + d + '/items/' + f.id + '/content', { headers: { Authorization: 'Bearer ' + token } }); if (r.ok) blob = await r.blob(); } catch (e) {} }
+    if (!blob) return;
+    const im = await nlBlobToImg(blob, 1100); if (im) out[i] = Object.assign({ name: f.name }, im);
+  };
+  for (let i = 0; i < files.length; i += 5) await Promise.all(files.slice(i, i + 5).map((f, j) => one(f, i + j)));
+  return { folder: folder.name, photos: out.filter(Boolean) };
+}
+
+// ---------- numbers ----------
+function nlMetrics(y, m) {
+  const emps = ALL_EMPLOYEES_FULL, m0 = m - 1;
+  const series = computeAttritionSeries(emps);
+  const lab = (yy, mm) => NL_MON[mm] + ' ' + yy;
+  const idx = series.findIndex(r => r.month === lab(y, m0));
+  if (idx < 0) return null;
+  const cur = series[idx], prev = idx > 0 ? series[idx - 1] : null;
+  const trend = series.slice(Math.max(0, idx - 5), idx + 1);
+  const ms = new Date(Date.UTC(y, m0, 1)), me = new Date(Date.UTC(y, m0 + 1, 0));
+  const si = diComp(ms), ei = diComp(me);
+  const exits = emps.filter(e => e.exitDate && diComp(e.exitDate) >= si && diComp(e.exitDate) <= ei).sort((a, b) => a.exitDate - b.exitDate);
+  const joiners = emps.filter(e => e.doj && diComp(e.doj) >= si && diComp(e.doj) <= ei);
+  const byDept = {};
+  joiners.forEach(e => { const k = e.dept || 'Other'; (byDept[k] = byDept[k] || { dept: k, j: 0, x: 0 }).j++; });
+  exits.forEach(e => { const k = e.dept || 'Other'; (byDept[k] = byDept[k] || { dept: k, j: 0, x: 0 }).x++; });
+  const depts = Object.values(byDept).sort((a, b) => (b.j + b.x) - (a.j + a.x) || a.dept.localeCompare(b.dept));
+  const reasons = computeTopExitReasons(emps, ms, me, 6).reasons.filter(r => !/not recorded/i.test(r.reason));
+  return { y, m, m0, cur, prev, prevLabel: prev ? prev.month.split(' ')[0] : '', trend, exits, depts, reasons, monthName: NL_MONFULL[m0] };
+}
+function nlTenure(d, x) { if (!d || !x) return ''; let mo = (x.getUTCFullYear() - d.getUTCFullYear()) * 12 + x.getUTCMonth() - d.getUTCMonth(); if (x.getUTCDate() < d.getUTCDate()) mo--; mo = Math.max(0, mo); const yy = Math.floor(mo / 12), r = mo % 12; return yy ? yy + 'y ' + r + 'm' : r + 'm'; }
+function nlFmtDate(d) { return d ? d.getUTCDate() + ' ' + NL_MON[d.getUTCMonth()] + ' ' + d.getUTCFullYear() : ''; }
+
+// ---------- photos into events ----------
+function nlAssignPhotos(events, photos) {
+  const left = [];
+  photos.forEach(p => {
+    const pn = nlNorm(p.name); let best = null;
+    events.forEach(ev => { const en = nlNorm(ev.name); if (en && (pn === en || pn.startsWith(en + ' ')) && (!best || en.length > nlNorm(best.name).length)) best = ev; });
+    if (best) (best.photos = best.photos || []).push(p); else left.push(p);
+  });
+  return left;
+}
+function nlBg(p, extra) { return '<div style="background:#E9EBEA url(\'' + p.url + '\') center/cover no-repeat;' + (extra || '') + '"></div>'; }
+function nlCollage(ph, W) {
+  const n = ph.length, G = 10; let h = 0, html = '';
+  if (n === 1) { h = 340; html = nlBg(ph[0], 'width:' + W + 'px;height:' + h + 'px;border-radius:6px'); }
+  else if (n === 2) { h = 260; const w = (W - G) / 2; html = '<div style="display:flex;gap:' + G + 'px">' + ph.map(p => nlBg(p, 'width:' + w + 'px;height:' + h + 'px;border-radius:6px')).join('') + '</div>'; }
+  else if (n === 3) { h = 340; const w = (W - G) / 2, hh = (h - G) / 2; html = '<div style="display:flex;gap:' + G + 'px">' + nlBg(ph[0], 'width:' + w + 'px;height:' + h + 'px;border-radius:6px') + '<div style="display:flex;flex-direction:column;gap:' + G + 'px">' + nlBg(ph[1], 'width:' + w + 'px;height:' + hh + 'px;border-radius:6px') + nlBg(ph[2], 'width:' + w + 'px;height:' + hh + 'px;border-radius:6px') + '</div></div>'; }
+  else if (n === 4) { const w = (W - G) / 2; h = 2 * 200 + G; html = '<div style="display:flex;flex-wrap:wrap;gap:' + G + 'px">' + ph.map(p => nlBg(p, 'width:' + w + 'px;height:200px;border-radius:6px')).join('') + '</div>'; }
+  else { const k = Math.min(n, 9), w = (W - 2 * G) / 3, rows = Math.ceil(k / 3); h = rows * 170 + (rows - 1) * G; html = '<div style="display:flex;flex-wrap:wrap;gap:' + G + 'px">' + ph.slice(0, 9).map(p => nlBg(p, 'width:' + w + 'px;height:170px;border-radius:6px')).join('') + '</div>'; }
+  return html;
+}
+
+// ---------- page blocks ----------
+const NL_T = '#0D3133', NL_O = '#E69F50';
+function nlSection(title, sub) { return '<div data-keep="1" style="margin-top:6px"><div style="display:flex;align-items:center;gap:10px"><div style="width:6px;height:24px;background:' + NL_O + ';border-radius:2px"></div><div style="font-size:19px;font-weight:800;color:' + NL_T + '">' + nlEsc(title) + '</div></div>' + (sub ? '<div style="font-size:11.5px;color:#666;margin:4px 0 0 16px">' + nlEsc(sub) + '</div>' : '') + '</div>'; }
+function nlDelta(cur, prev, upGood, unit) {
+  if (prev == null) return '';
+  const d = cur - prev, ab = Math.abs(d); if (d === 0) return '<span style="color:#73847B">no change from ' + nlEsc(unit) + '</span>';
+  const good = upGood ? d > 0 : d < 0;
+  return '<span style="color:' + (good ? '#107C10' : '#D13438') + ';font-weight:700">' + (d > 0 ? '&#9650;' : '&#9660;') + ' ' + nlNum(ab) + '</span> <span style="color:#666">vs ' + nlEsc(unit) + '</span>';
+}
+function nlTile(label, val, sub) { return '<div style="flex:1;border:1px solid #E1E5E3;border-top:4px solid ' + NL_T + ';border-radius:6px;padding:10px 12px;background:#FAFBFA"><div style="font-size:10.5px;color:#666;text-transform:uppercase;letter-spacing:.05em;font-weight:700">' + label + '</div><div style="font-size:28px;font-weight:800;color:' + NL_T + ';line-height:1.15;margin:3px 0">' + val + '</div><div style="font-size:11.5px">' + sub + '</div></div>'; }
+function nlLineSvg(labels, vals, W, H) {
+  const pad = 34, mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals), rg = (mx - mn) || 1, lo = mn - rg * 0.25, hi = mx + rg * 0.25;
+  const X = i => pad + (W - 2 * pad) * (vals.length === 1 ? 0.5 : i / (vals.length - 1)), Y = v => 20 + (H - 52) * (1 - (v - lo) / (hi - lo));
+  const pts = vals.map((v, i) => X(i) + ',' + Y(v)).join(' ');
+  return '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '"><polyline fill="none" stroke="' + NL_T + '" stroke-width="2.5" points="' + pts + '"/>' + vals.map((v, i) => '<circle cx="' + X(i) + '" cy="' + Y(v) + '" r="4" fill="' + NL_O + '"/><text x="' + X(i) + '" y="' + (Y(v) - 9) + '" font-size="11" font-weight="700" text-anchor="middle" fill="' + NL_T + '">' + nlNum(v) + '</text><text x="' + X(i) + '" y="' + (H - 8) + '" font-size="10.5" text-anchor="middle" fill="#666">' + nlEsc(labels[i]) + '</text>').join('') + '</svg>';
+}
+function nlBarsSvg(labels, a, b, W, H) {
+  const pad = 30, mx = Math.max(1, Math.max.apply(null, a.concat(b))), gw = (W - 2 * pad) / labels.length, bw = Math.min(22, gw / 3);
+  const Yh = v => (H - 50) * v / mx;
+  return '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '">' + labels.map((l, i) => { const cx = pad + gw * i + gw / 2; return '<rect x="' + (cx - bw - 1) + '" y="' + (H - 28 - Yh(a[i])) + '" width="' + bw + '" height="' + Yh(a[i]) + '" fill="' + NL_T + '"/><rect x="' + (cx + 1) + '" y="' + (H - 28 - Yh(b[i])) + '" width="' + bw + '" height="' + Yh(b[i]) + '" fill="' + NL_O + '"/><text x="' + (cx - bw / 2 - 1) + '" y="' + (H - 32 - Yh(a[i])) + '" font-size="10" text-anchor="middle" font-weight="700" fill="' + NL_T + '">' + a[i] + '</text><text x="' + (cx + bw / 2 + 1) + '" y="' + (H - 32 - Yh(b[i])) + '" font-size="10" text-anchor="middle" font-weight="700" fill="#B8742A">' + b[i] + '</text><text x="' + cx + '" y="' + (H - 10) + '" font-size="10.5" text-anchor="middle" fill="#666">' + nlEsc(l) + '</text>'; }).join('') + '</svg>';
+}
+function nlCmpWord(cur, prev) { return cur > prev ? 'more than' : (cur < prev ? 'fewer than' : 'the same as'); }
+
+function nlBlocks(D) {
+  const M = D.metrics, T = D.tracker, B = [];
+  const mname = M.monthName + ' ' + M.y, pl = M.prevLabel, c = M.cur, p = M.prev;
+  const cellS = 'padding:6px 8px;border-bottom:1px solid #EEF0EF;font-size:11.5px';
+  // masthead
+  B.push('<div style="background:' + NL_T + ';border-radius:8px;padding:26px 28px;color:#fff;position:relative;overflow:hidden"><div style="position:absolute;right:-30px;top:-30px;width:170px;height:170px;border-radius:50%;background:' + NL_O + ';opacity:.22"></div><div style="font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:' + NL_O + ';font-weight:700">Adamsbridge</div><div style="font-size:40px;font-weight:800;line-height:1.1;margin-top:6px">HR Newsletter</div><div style="font-size:21px;margin-top:4px;color:#F7C98B;font-weight:600">' + nlEsc(mname) + '</div><div style="font-size:11.5px;color:#C7D3D1;margin-top:12px">People, hiring and culture at a glance &middot; prepared by HR</div></div>');
+  // hero strip
+  const hero = D.allPhotos.slice(0, 3);
+  if (hero.length) { const w = (NL_CW - 20) / 3; B.push('<div style="display:flex;gap:10px">' + hero.map(x => nlBg(x, 'width:' + w + 'px;height:150px;border-radius:6px')).join('') + '</div>'); }
+  // R&R
+  if (T.rr.length) {
+    B.push(nlSection('Rewards & Recognition', 'Recognised in ' + mname));
+    const col = '170px 150px 1fr';
+    B.push('<div data-keep="1" style="display:grid;grid-template-columns:' + col + ';background:' + NL_T + ';color:#fff;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:6px 8px;border-radius:4px 4px 0 0"><div>Award</div><div>Name</div><div>Reason</div></div>');
+    T.rr.forEach(r => B.push('<div data-row="1" style="display:grid;grid-template-columns:' + col + ';padding:7px 8px;border-bottom:1px solid #EEF0EF;font-size:12px;line-height:1.45"><div style="font-weight:700;color:' + NL_T + '">' + nlEsc(r.award) + '</div><div><strong>' + nlEsc(r.name) + '</strong><div style="font-size:10.5px;color:#666">' + nlEsc([r.desig, r.dept].filter(Boolean).join(' · ')) + '</div></div><div>' + nlEsc(r.reason) + '</div></div>'));
+  }
+  // At a glance
+  B.push(nlSection('At a glance', mname + (pl ? ', compared with ' + pl : '')));
+  B.push('<div style="display:flex;gap:10px">' + nlTile('Headcount, month end', nlNum(c.chc), nlDelta(c.chc, p && p.chc, true, pl)) + nlTile('Joined', nlNum(c.joins), nlDelta(c.joins, p && p.joins, true, pl)) + nlTile('Left', nlNum(c.exits), nlDelta(c.exits, p && p.exits, false, pl)) + nlTile('Monthly attrition', c.monthly_pct.toFixed(2) + '%', p ? nlDelta(c.monthly_pct, p.monthly_pct, false, pl).replace(/(\d[\d,]*)<\/span>/, '$1 pts</span>') : '') + '</div>');
+  // Headcount & hiring
+  B.push(nlSection('Headcount and hiring'));
+  const dh = p ? c.chc - p.chc : 0;
+  let s1 = 'Headcount closed ' + M.monthName + ' at <strong>' + nlNum(c.chc) + '</strong>' + (p ? (dh === 0 ? ', unchanged from ' + pl : ', ' + (dh > 0 ? 'up ' : 'down ') + nlNum(Math.abs(dh)) + ' (' + (Math.abs(dh) / p.chc * 100).toFixed(1) + '%) from ' + pl) : '') + '.';
+  let s2 = '<strong>' + nlNum(c.joins) + '</strong> people joined' + (p ? ', ' + nlCmpWord(c.joins, p.joins) + ' the ' + nlNum(p.joins) + ' who joined in ' + pl : '') + '.';
+  B.push('<div style="font-size:13px;line-height:1.7">' + s1 + ' ' + s2 + ' Interns are not counted in headcount.</div>');
+  const tl = M.trend.map(r => r.month.split(' ')[0]);
+  if (M.trend.length > 1) B.push('<div style="display:flex;gap:14px"><div style="flex:1;border:1px solid #E1E5E3;border-radius:6px;padding:8px"><div style="font-size:11.5px;font-weight:700;color:' + NL_T + '">Headcount, last ' + M.trend.length + ' months</div>' + nlLineSvg(tl, M.trend.map(r => r.chc), 340, 190) + '</div><div style="flex:1;border:1px solid #E1E5E3;border-radius:6px;padding:8px"><div style="font-size:11.5px;font-weight:700;color:' + NL_T + '">Joined <span style="display:inline-block;width:9px;height:9px;background:' + NL_T + '"></span> and left <span style="display:inline-block;width:9px;height:9px;background:' + NL_O + '"></span></div>' + nlBarsSvg(tl, M.trend.map(r => r.joins), M.trend.map(r => r.exits), 340, 190) + '</div></div>');
+  if (M.depts.length) {
+    B.push('<div data-keep="1" style="font-size:12.5px;font-weight:700;color:' + NL_T + ';margin-top:2px">Movement by department, ' + nlEsc(M.monthName) + '</div>');
+    const col = '1fr 70px 70px 70px';
+    B.push('<div data-keep="1" style="display:grid;grid-template-columns:' + col + ';background:' + NL_T + ';color:#fff;font-size:10.5px;font-weight:700;text-transform:uppercase;padding:6px 8px;border-radius:4px 4px 0 0"><div>Department</div><div style="text-align:right">Joined</div><div style="text-align:right">Left</div><div style="text-align:right">Net</div></div>');
+    M.depts.slice(0, 14).forEach(d => { const net = d.j - d.x; B.push('<div data-row="1" style="display:grid;grid-template-columns:' + col + ';' + cellS + '"><div>' + nlEsc(d.dept) + '</div><div style="text-align:right">' + d.j + '</div><div style="text-align:right">' + d.x + '</div><div style="text-align:right;font-weight:700;color:' + (net > 0 ? '#107C10' : net < 0 ? '#D13438' : '#73847B') + '">' + (net > 0 ? '+' : '') + net + '</div></div>'); });
+  }
+  // Attrition
+  B.push(nlSection('Attrition'));
+  B.push('<div style="font-size:13px;line-height:1.7"><strong>' + nlNum(c.exits) + '</strong> people left in ' + nlEsc(M.monthName) + ' (' + c.vol + ' voluntary, ' + c.invol + ' involuntary)' + (p ? ', ' + nlCmpWord(c.exits, p.exits) + ' the ' + nlNum(p.exits) + ' who left in ' + pl : '') + '. Voluntary attrition, annualised for the year so far, stands at <strong>' + c.vol_ann_pct.toFixed(1) + '%</strong> against the ' + DM_TARGET + '% annual target.</div>');
+  const rowsA = [['Total exits', nlNum(c.exits), p ? nlNum(p.exits) : ''], ['Voluntary exits', nlNum(c.vol), p ? nlNum(p.vol) : ''], ['Monthly attrition', c.monthly_pct.toFixed(2) + '%', p ? p.monthly_pct.toFixed(2) + '%' : ''], ['Year to date, annualised (all exits)', c.ann_pct.toFixed(1) + '%', p ? p.ann_pct.toFixed(1) + '%' : ''], ['Year to date, annualised (voluntary)', c.vol_ann_pct.toFixed(1) + '%', p ? p.vol_ann_pct.toFixed(1) + '%' : '']];
+  B.push('<div data-keep="1" style="display:grid;grid-template-columns:1fr 100px 100px;background:' + NL_T + ';color:#fff;font-size:10.5px;font-weight:700;text-transform:uppercase;padding:6px 8px;border-radius:4px 4px 0 0"><div>Measure</div><div style="text-align:right">' + nlEsc(M.monthName) + '</div><div style="text-align:right">' + nlEsc(pl || '') + '</div></div>');
+  rowsA.forEach(r => B.push('<div data-row="1" style="display:grid;grid-template-columns:1fr 100px 100px;' + cellS + '"><div>' + r[0] + '</div><div style="text-align:right;font-weight:700">' + r[1] + '</div><div style="text-align:right;color:#666">' + r[2] + '</div></div>'));
+  if (M.reasons.length) {
+    const mx = Math.max.apply(null, M.reasons.map(r => r.count));
+    B.push('<div style="margin-top:6px"><div style="font-size:12.5px;font-weight:700;color:' + NL_T + ';margin-bottom:6px">Reasons for leaving, ' + nlEsc(M.monthName) + '</div>' + M.reasons.map(r => '<div style="display:flex;align-items:center;gap:10px;font-size:12px;margin-bottom:5px"><div style="width:230px">' + nlEsc(r.reason) + '</div><div style="flex:1;background:#F0F2F1;border-radius:3px;height:14px"><div style="width:' + Math.round(r.count / mx * 100) + '%;height:14px;background:' + NL_O + ';border-radius:3px"></div></div><div style="width:28px;text-align:right;font-weight:700">' + r.count + '</div></div>').join('') + '</div>');
+  }
+  // Engagement
+  if (D.events.length || D.leftover.length) {
+    B.push(nlSection('Engagement and culture', 'What the organisation did together in ' + mname));
+    D.events.forEach(ev => {
+      const meta = [nlFmtDate(ev.dateObj), ev.loc, ev.dept, ev.n ? nlNum(ev.n) + ' participants' : '', ev.cat].filter(Boolean).join(' · ');
+      B.push('<div data-keep="' + ((ev.photos || []).length ? 1 : 0) + '" style="border-left:4px solid ' + NL_O + ';padding-left:12px"><div style="font-size:15px;font-weight:800;color:' + NL_T + '">' + nlEsc(ev.name) + '</div><div style="font-size:11px;color:#666;margin:2px 0 4px">' + nlEsc(meta) + '</div>' + (ev.sum ? '<div style="font-size:12.5px;line-height:1.55">' + nlEsc(ev.sum) + '</div>' : '') + '</div>');
+      if ((ev.photos || []).length) B.push(nlCollage(ev.photos.slice(0, 9), NL_CW));
+    });
+    if (D.leftover.length) {
+      B.push('<div data-keep="1" style="font-size:15px;font-weight:800;color:' + NL_T + ';border-left:4px solid ' + NL_O + ';padding-left:12px">More moments</div>');
+      for (let i = 0; i < D.leftover.length; i += 9) { const ch = D.leftover.slice(i, i + 9); B.push(nlCollage(ch, NL_CW) + '<div style="font-size:10.5px;color:#666;margin-top:4px">' + ch.map(x => nlEsc(String(x.name).replace(/\.[a-z0-9]+$/i, '').replace(/[_]+/g, ' ').replace(/[\s\-]*\d+$/, ''))).filter((v, k, a) => v && a.indexOf(v) === k).join(' &nbsp;&middot;&nbsp; ') + '</div>'); }
+    }
+  }
+  // Other updates
+  if (T.other.length) {
+    B.push(nlSection('Other updates'));
+    T.other.forEach(o => B.push('<div style="border:1px solid #E1E5E3;border-radius:6px;padding:9px 12px"><div style="display:flex;gap:8px;align-items:center"><div style="font-size:13.5px;font-weight:800;color:' + NL_T + '">' + nlEsc(o.head) + '</div>' + (o.cat ? '<div style="font-size:10px;background:#F7E7CF;color:#8A5A12;border-radius:10px;padding:1px 8px;font-weight:700">' + nlEsc(o.cat) + '</div>' : '') + '</div><div style="font-size:12.5px;line-height:1.55;margin-top:3px">' + nlEsc(o.detail) + '</div></div>'));
+  }
+  // Annexure
+  if (M.exits.length) {
+    B.push(nlSection('Annexure: people who left in ' + mname, M.exits.length + ' employee' + (M.exits.length === 1 ? '' : 's') + ', in order of last working day'));
+    const col = '24px 152px 108px 124px 72px 48px 66px 120px';
+    B.push('<div data-keep="1" style="display:grid;grid-template-columns:' + col + ';background:' + NL_T + ';color:#fff;font-size:9.5px;font-weight:700;text-transform:uppercase;padding:6px 4px;border-radius:4px 4px 0 0"><div>#</div><div>Name</div><div>Department</div><div>Designation</div><div>Last day</div><div>Tenure</div><div>Type</div><div>Reason</div></div>');
+    M.exits.forEach((e, i) => { const rs = normalizeExitReason(e.resignReason); B.push('<div data-row="1" style="display:grid;grid-template-columns:' + col + ';padding:5px 4px;border-bottom:1px solid #EEF0EF;font-size:10.5px;line-height:1.35;overflow-wrap:anywhere"><div>' + (i + 1) + '</div><div style="font-weight:700">' + nlEsc(e.name) + '</div><div>' + nlEsc(e.dept) + '</div><div>' + nlEsc(e.desig) + '</div><div>' + nlFmtDate(e.exitDate) + '</div><div>' + nlTenure(e.doj, e.exitDate) + '</div><div>' + nlEsc(e.resignType) + '</div><div>' + (/not recorded/i.test(rs) ? '' : nlEsc(rs)) + '</div></div>'); });
+  }
+  return B;
+}
+function nlPaginate(blocks, D) {
+  const probe = document.createElement('div'); probe.style.cssText = 'position:fixed;left:-9999px;top:0;width:' + NL_CW + 'px;font-family:"Segoe UI",Calibri,Arial,sans-serif;color:#222';
+  probe.innerHTML = blocks.map(b => '<div class="nl-b" data-r="' + (/^<div data-row="1"/.test(b) ? 1 : 0) + '" style="margin-bottom:' + (/^<div data-row="1"/.test(b) ? 0 : 12) + 'px">' + b + '</div>').join(''); document.body.appendChild(probe);
+  const kids = [...probe.querySelectorAll('.nl-b')].map(el => ({ h: el.getBoundingClientRect().height + (el.getAttribute('data-r') === '1' ? 0 : 12), keep: !!el.firstElementChild && el.firstElementChild.getAttribute('data-keep') === '1' }));
+  document.body.removeChild(probe);
+  const caps = [NL_PH - 34 - 30, NL_PH - 34 - 30 - 40]; // page 1 has no running header; later pages do
+  const pages = [[]]; let used = 0;
+  blocks.forEach((b, i) => {
+    const cap = pages.length === 1 ? caps[0] : caps[1];
+    let need = kids[i].h; if (kids[i].keep && blocks[i + 1] && i + 1 < blocks.length) need += kids[i + 1].h;
+    if (used + need > cap && pages[pages.length - 1].length) { pages.push([]); used = 0; }
+    pages[pages.length - 1].push(b); used += kids[i].h;
+  });
+  const total = pages.length, ttl = D.metrics.monthName + ' ' + D.metrics.y;
+  return pages.map((bl, i) => '<div class="nl-page" style="width:' + NL_PW + 'px;height:' + NL_PH + 'px;background:#fff;position:relative;overflow:hidden;font-family:\'Segoe UI\',Calibri,Arial,sans-serif;color:#222;box-sizing:border-box">' +
+    (i ? '<div style="height:34px;background:' + NL_T + ';color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 40px;font-size:11px"><span style="font-weight:700;letter-spacing:.08em">ADAMSBRIDGE &middot; HR NEWSLETTER</span><span style="color:#F7C98B">' + nlEsc(ttl) + '</span></div><div style="height:6px;background:' + NL_O + '"></div>' : '<div style="height:10px;background:' + NL_O + '"></div>') +
+    '<div style="padding:' + (i ? 20 : 24) + 'px 40px 0;display:flex;flex-direction:column;gap:12px">' + bl.map(x => /^<div data-row="1"/.test(x) ? '<div style="margin-top:-12px">' + x + '</div>' : x).join('') + '</div>' +
+    '<div style="position:absolute;left:40px;right:40px;bottom:12px;border-top:1px solid #E1E5E3;padding-top:6px;font-size:9.5px;color:#999;display:flex;justify-content:space-between"><span>Adamsbridge HR Newsletter &middot; ' + nlEsc(ttl) + ' &middot; Confidential, for internal use</span><span>Page ' + (i + 1) + ' of ' + total + '</span></div></div>');
+}
+
+// ---------- compose, render, download ----------
+function nlCompose(y, m, tracker, photos) {
+  const metrics = nlMetrics(y, m); if (!metrics) return null;
+  const inMonth = d => { const p = parseExcelDate(d); return p && p.getUTCFullYear() === y && p.getUTCMonth() === m - 1 ? p : null; };
+  const events = tracker.events.filter(e => String(e.name || '').trim() && !/^example\b/i.test(String(e.name).trim()) && inMonth(e.date)).map(e => Object.assign({}, e, { name: String(e.name).trim(), dateObj: inMonth(e.date), photos: [] })).sort((a, b) => a.dateObj - b.dateObj);
+  const rr = tracker.rr.filter(r => String(r.name || '').trim() && !/^example\b/i.test(String(r.award || '').trim()) && inMonth(r.date));
+  const other = tracker.other.filter(o => String(o.head || '').trim() && !/^example\b/i.test(String(o.head).trim()) && inMonth(o.date));
+  const leftover = nlAssignPhotos(events, photos);
+  const allPhotos = photos.slice();
+  return { metrics, tracker: { rr, other }, events, leftover, allPhotos };
+}
+function nlRenderPreview() {
+  const host = document.getElementById('nl-preview'); if (!host) return;
+  if (!NL.pages.length) { host.innerHTML = '<div class="note" style="padding:14px">Choose the month and click <strong>Build newsletter</strong>. The preview appears here and can then be downloaded as a PDF.</div>'; return; }
+  host.innerHTML = '<div style="zoom:.8;display:flex;flex-direction:column;gap:18px;align-items:center">' + NL.pages.map(p => '<div style="box-shadow:0 2px 10px rgba(0,0,0,.18)">' + p + '</div>').join('') + '</div>';
+}
+async function nlBuild() {
+  if (NL.busy) return; NL.busy = true;
+  const st = document.getElementById('nl-status'), dl = document.getElementById('nl-dl');
+  const set = t => { if (st) st.textContent = t; };
+  try {
+    const [y, m] = document.getElementById('nl-month').value.split('-').map(Number);
+    set('Loading tracker and photos…'); if (dl) dl.disabled = true;
+    const warn = []; let photos = [], folder = '';
+    let token = null; try { token = await getToken(); } catch (e) {}
+    if (!token) warn.push('Sign-in token is not available');
+    else {
+      if (!NL.tracker) { try { NL.tracker = await nlLoadTracker(token); } catch (e) { warn.push('The tracker could not be opened (' + e.message + ')'); } }
+      try { const r = await nlLoadPhotos(token, y, m); photos = r.photos; folder = r.folder; } catch (e) { warn.push('The photo folder could not be opened (' + e.message + ')'); }
+    }
+    const D = nlCompose(y, m, NL.tracker || { events: [], rr: [], other: [] }, photos);
+    if (!D) { set('There is no employee data for ' + NL_MONFULL[m - 1] + ' ' + y + '.'); NL.pages = []; nlRenderPreview(); return; }
+    NL.data = D; NL.pages = nlPaginate(nlBlocks(D), D);
+    nlRenderPreview();
+    set('Built: ' + NL.pages.length + ' pages · ' + D.tracker.rr.length + ' awards · ' + D.events.length + ' events · ' + D.tracker.other.length + ' updates · ' + photos.length + ' photos' + (folder ? ' from "' + folder + '"' : '') + (warn.length ? ' · ' + warn.join('; ') : ''));
+    if (dl) dl.disabled = !NL.pages.length;
+  } catch (err) { console.error('Newsletter failed', err); set('The newsletter could not be built: ' + (err && err.message)); }
+  finally { NL.busy = false; }
+}
+async function nlDownload() {
+  const st = document.getElementById('nl-status');
+  if (!NL.pages.length || !window.jspdf || !window.html2canvas) { if (st) st.textContent = 'PDF library not loaded. Check your connection and try again.'; return; }
+  try {
+    st.textContent = 'Generating PDF…';
+    const wrap = document.createElement('div'); wrap.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff'; wrap.innerHTML = NL.pages.join(''); document.body.appendChild(wrap);
+    const { jsPDF } = window.jspdf; const doc = new jsPDF('p', 'pt', 'a4'); const els = [...wrap.querySelectorAll('.nl-page')];
+    for (let i = 0; i < els.length; i++) {
+      st.textContent = 'Generating PDF… page ' + (i + 1) + ' of ' + els.length;
+      const cv = await html2canvas(els[i], { scale: 2, useCORS: true, backgroundColor: '#ffffff', width: NL_PW, height: NL_PH, windowWidth: NL_PW });
+      if (i) doc.addPage(); doc.addImage(cv.toDataURL('image/jpeg', 0.9), 'JPEG', 0, 0, 595.28, 841.89);
+    }
+    document.body.removeChild(wrap);
+    const M = NL.data.metrics; doc.save('Adamsbridge_HR_Newsletter_' + NL_MON[M.m0] + '_' + M.y + '.pdf'); st.textContent = 'Downloaded.';
+  } catch (err) { console.error('Newsletter PDF failed', err); st.textContent = 'PDF generation failed. Please try again.'; }
 }
 
 function repDownload(previewId, key, statusId) {
