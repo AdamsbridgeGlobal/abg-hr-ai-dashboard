@@ -378,6 +378,7 @@
   <div class="card"><div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
     <label style="font-size:.82rem;color:#0D3133;font-weight:700">Department:</label><select id="rep-attr-dept" onchange="repRerender()" style="padding:8px 14px;border:1.5px solid #73847B;border-radius:6px;font-family:inherit;font-size:.85rem;font-weight:700;min-width:170px"><option value="">All departments</option></select>
     <label style="font-size:.82rem;color:#0D3133;font-weight:700">BU Head:</label><select class="bu-sel" onchange="onBuFilterChange(this.value)" style="padding:8px 14px;border:1.5px solid #73847B;border-radius:6px;font-family:inherit;font-size:.85rem;font-weight:700;min-width:170px"><option value="">All BU Heads</option></select>
+    <label style="font-size:.82rem;color:#0D3133;font-weight:700">Location:</label><select id="rep-attr-loc" onchange="repRerender()" style="padding:8px 14px;border:1.5px solid #73847B;border-radius:6px;font-family:inherit;font-size:.85rem;font-weight:700;min-width:170px"><option value="">All locations</option></select>
     <label style="font-size:.82rem;color:#0D3133;font-weight:700">Year:</label><select id="rep-attr-year" onchange="repRerender()" style="padding:8px 14px;border:1.5px solid #73847B;border-radius:6px;font-family:inherit;font-size:.85rem;font-weight:700;min-width:170px"></select>
     <button onclick="repDownload('rep-attr-preview','attr','rep-attr-status')" style="padding:9px 20px;background:#E69F50;color:#fff;border:none;border-radius:6px;font-family:inherit;font-weight:700;font-size:.85rem;cursor:pointer">Download PDF</button>
     <span id="rep-attr-status" style="font-size:.78rem;color:#888"></span>
@@ -1327,6 +1328,20 @@
       <div class="ctitle" id="attr-loc-title">Location — voluntary attrition, this year vs last year</div>
       <div class="note" style="margin:0 0 10px">Follows the Year, Month, Department and BU Head filters above. Every location is shown side by side.</div>
       <div id="attr-loc-scorecard"></div>
+    </div>
+    <div class="card" style="border-top:3px solid #E69F50">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px">
+        <div class="ctitle" id="attr-locsl-title" style="margin:0">Month by month for one location</div>
+        <label style="font-size:.82rem;color:#0D3133;font-weight:700;margin-left:auto">Location:</label>
+        <select id="attr-loc-select" onchange="renderAttrition()" style="padding:8px 14px;border:1.5px solid #73847B;border-radius:6px;font-family:inherit;font-size:.85rem;font-weight:700;min-width:170px"><option value="">All locations</option></select>
+      </div>
+      <div class="note" style="margin:0 0 10px" id="attr-locsl-note"></div>
+      <div class="scrollbox"><table class="dt" id="attr-locsl-table"></table></div>
+    </div>
+    <div class="card">
+      <div class="ctitle" id="attr-locdept-title">Department-wise for the selected location</div>
+      <div class="note" style="margin:0 0 10px">Year to date for the location chosen above, split by department. Annualised is YTD scaled to 12 months.</div>
+      <div class="scrollbox"><table class="dt" id="attr-locdept-table"></table></div>
     </div>
     <div class="card">
       <div class="ctitle" id="attr-loc-month-title">Voluntary exits by month, by location</div>
@@ -3096,6 +3111,46 @@ function buildLocScorecardHTML(year, month, dept) {
     '</tbody></table></div>';
 }
 
+function locMatch(e, L) { return !L || L.split('+').indexOf(e.branch) >= 0; }
+function locDeptRows(pop, year) {
+  const names = [...new Set(pop.map(e => e.dept).filter(Boolean))];
+  return names.map(d => { const rs = computeLocAttrRows(pop.filter(e => e.dept === d), year); if (!rs.length) return null; const l = rs[rs.length-1]; const sum = k => rs.reduce((a,r) => a + r[k], 0);
+    return { dept: d, avg: Math.round(rs.reduce((a,r) => a + r.avg, 0) / rs.length), vol: sum('vol'), volY: l.volY, volA: l.volA, im: sum('im'), imY: l.imY, imA: l.imA, er: sum('er'), erY: l.erY, erA: l.erA }; })
+    .filter(r => r && (r.avg > 0) && (r.vol || r.im || r.er || r.avg >= 5)).sort((a,b) => b.vol - a.vol || b.avg - a.avg);
+}
+function locDeptTableHTML(rows) {
+  const f = v => v.toFixed(1) + '%';
+  return '<thead><tr><th rowspan="2">Department</th><th rowspan="2">Avg HC</th><th colspan="3">Voluntary</th><th colspan="3">Immediate (under 90 days)</th><th colspan="3">Early (90 days to 1 year)</th></tr><tr><th>Exits</th><th>YTD</th><th>Annualised</th><th>Exits</th><th>YTD</th><th>Annualised</th><th>Exits</th><th>YTD</th><th>Annualised</th></tr></thead><tbody>' +
+    rows.map(r => { const c = r.volA>15?'r-red':r.volA>8?'r-amber':'r-green'; return `<tr><td><strong>${r.dept}</strong></td><td>${r.avg}</td><td>${r.vol||'-'}</td><td>${f(r.volY)}</td><td class="${c}">${f(r.volA)}</td><td>${r.im||'-'}</td><td>${f(r.imY)}</td><td>${f(r.imA)}</td><td>${r.er||'-'}</td><td>${f(r.erY)}</td><td>${f(r.erA)}</td></tr>`; }).join('') + '</tbody>';
+}
+function locOptions() { return [...new Set(ALL_EMPLOYEES_FULL.map(e => e.branch).filter(Boolean))].sort(); }
+function locFillSelect(sel) { if (!sel || sel.options.length > 1) return; const ls = locOptions(); const both = ls.indexOf('Chennai') >= 0 && ls.indexOf('Coimbatore') >= 0; ls.forEach(l => { const o = document.createElement('option'); o.value = l; o.textContent = l; sel.appendChild(o); }); if (both) { const o = document.createElement('option'); o.value = 'Chennai+Coimbatore'; o.textContent = 'Chennai + Coimbatore (both)'; sel.insertBefore(o, sel.options[1]); } }
+// Month-by-month attrition for one location (or all): voluntary, immediate (<90 days) and early (90 days to 1 year).
+// Same opening/closing headcount, YTD and annualising mechanics as computeAttritionSeries.
+function computeLocAttrRows(pop, year) {
+  const base = computeAttritionSeries(pop).filter(r => r.year === year);
+  const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const exits = pop.filter(e => e.exitDate && e.doj && e.exitDate.getUTCFullYear() === year);
+  const ten = e => (e.exitDate - e.doj) / 864e5;
+  let imY = 0, erY = 0, avgSum = 0;
+  return base.map((r, i) => {
+    const mi = MON.indexOf(r.month.slice(0, 3));
+    const inM = exits.filter(e => e.exitDate.getUTCMonth() === mi);
+    const im = inM.filter(e => ten(e) < 90).length;
+    const er = inM.filter(e => ten(e) >= 90 && ten(e) < 365).length;
+    imY += im; erY += er; avgSum += r.avg_hc;
+    const ytdAvg = avgSum / (i + 1), el = i + 1;
+    const pc = (n, d) => d > 0 ? Math.round(n / d * 10000) / 100 : 0;
+    return { month: r.month, avg: r.avg_hc, vol: r.vol, volM: r.vol_monthly_pct, volY: r.ytd_vol_pct, volA: r.vol_ann_pct,
+      im, imM: pc(im, r.avg_hc), imY: pc(imY, ytdAvg), imA: Math.round(pc(imY, ytdAvg) * 12 / el * 100) / 100,
+      er, erM: pc(er, r.avg_hc), erY: pc(erY, ytdAvg), erA: Math.round(pc(erY, ytdAvg) * 12 / el * 100) / 100 };
+  });
+}
+function locAttrTableHTML(rows) {
+  const f = v => v.toFixed(1) + '%';
+  return '<thead><tr><th rowspan="2">Month</th><th rowspan="2">Avg HC</th><th colspan="4">Voluntary</th><th colspan="4">Immediate (under 90 days)</th><th colspan="4">Early (90 days to 1 year)</th></tr><tr><th>Exits</th><th>Month</th><th>YTD</th><th>Annualised</th><th>Exits</th><th>Month</th><th>YTD</th><th>Annualised</th><th>Exits</th><th>Month</th><th>YTD</th><th>Annualised</th></tr></thead><tbody>' +
+    rows.map(r => `<tr><td><strong>${r.month}</strong></td><td>${r.avg}</td><td class="r-red">${r.vol||'-'}</td><td>${f(r.volM)}</td><td>${f(r.volY)}</td><td>${f(r.volA)}</td><td class="r-red">${r.im||'-'}</td><td>${f(r.imM)}</td><td>${f(r.imY)}</td><td>${f(r.imA)}</td><td class="r-red">${r.er||'-'}</td><td>${f(r.erM)}</td><td>${f(r.erY)}</td><td>${f(r.erA)}</td></tr>`).join('') + '</tbody>';
+}
 function computeYearSummary(emps, year, month) {
   // month (1-12) is optional — when given, the summary covers just that month of the year.
   const series = computeAttritionSeries(emps).filter(r => r.year === year && (!month || r.month.startsWith(['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][month-1])));
@@ -4844,7 +4899,8 @@ function repRenderAttr() {
   const host = document.getElementById('rep-attr-preview'); if (!host) return;
   const dept = repScope('attr'); const ysel = document.getElementById('rep-attr-year');
   const year = ysel && ysel.value ? parseInt(ysel.value) : new Date().getFullYear();
-  const pop = ALL_EMPLOYEES.filter(e => !dept || e.dept === dept);
+  const locSel = document.getElementById('rep-attr-loc'); locFillSelect(locSel); const loc = locSel ? locSel.value : '';
+  const pop = ALL_EMPLOYEES.filter(e => (!dept || e.dept === dept) && locMatch(e, loc));
   const ys = computeYearSummary(pop, year);
   const lbl = year === new Date().getFullYear() ? 'year to date' : 'full year';
   const start = new Date(Date.UTC(year, 0, 1)), end = new Date(Date.UTC(year, 11, 31));
@@ -4858,6 +4914,8 @@ function repRenderAttr() {
     ['Left within 90 days', early, yearExits.length ? Math.round(early / yearExits.length * 100) + '% of exits' : '']
   ]);
   const rows = ys.monthlySeries.map(r => [r.month, r.ohc, r.joins, r.exits, r.vol, r.chc, r.monthly_pct + '%', r.ytd_vol_pct + '%']);
+  let locTbl = ''; try { const lr = computeLocAttrRows(pop, year); if (lr.length) locTbl = repSec('Voluntary, immediate and early attrition by month, ' + year + (loc ? ' — ' + loc : '')) + repTable(['Month','Vol. exits','Vol. month','Vol. YTD','Vol. annualised','Immediate exits (<90d)','Immediate YTD','Immediate annualised','Early exits (90d–1y)','Early YTD','Early annualised'], lr.map(r => [r.month, r.vol, r.volM.toFixed(1)+'%', r.volY.toFixed(1)+'%', r.volA.toFixed(1)+'%', r.im, r.imY.toFixed(1)+'%', r.imA.toFixed(1)+'%', r.er, r.erY.toFixed(1)+'%', r.erA.toFixed(1)+'%'])); } catch (e) { console.error('loc rows failed', e); }
+  let locDept = ''; try { const dr = locDeptRows(pop, year); if (dr.length) locDept = repSec('Department-wise, ' + year + (loc ? ' — ' + loc.replace('+',' + ') : '')) + repTable(['Department','Avg HC','Vol. exits','Vol. YTD','Vol. annualised','Immediate exits','Immediate YTD','Early exits','Early YTD'], dr.map(r => [r.dept, r.avg, r.vol, r.volY.toFixed(1)+'%', r.volA.toFixed(1)+'%', r.im, r.imY.toFixed(1)+'%', r.er, r.erY.toFixed(1)+'%'])); } catch (e) { console.error('loc dept failed', e); }
   const monthly = repSec('Month by month, ' + year) + repTable(['Month', 'Opening', 'Joined', 'Exits', 'Voluntary', 'Closing', 'Monthly attrition', 'Voluntary, year to date'], rows);
   let reasons = '', tenure = '', byDept = '';
   try {
@@ -4871,7 +4929,7 @@ function repRenderAttr() {
     const dr = names.map(n => { const s2 = computeYearSummary(pop.filter(e => e.dept === n), year); return { n, s2 }; }).filter(x => x.s2.avgHC > 0).sort((a, b) => b.s2.rate - a.s2.rate);
     if (dr.length) byDept = repSec('By department, ' + year) + repTable(['Department', 'Average headcount', 'Voluntary exits', 'All exits', 'Voluntary attrition'], dr.map(x => [x.n, Math.round(x.s2.avgHC).toLocaleString(), x.s2.volExits, x.s2.totalExits, x.s2.rate + '%']));
   }
-  host.innerHTML = `<div style="background:#fff;padding:18px 20px;border:1px solid #E9EBEA;border-radius:8px;max-width:720px;margin:0 auto">${repHeader('Attrition report, ' + year, repScopeText(dept))}${kp}${monthly}${reasons}${tenure}${byDept}${repFooter()}</div>`;
+  host.innerHTML = `<div style="background:#fff;padding:18px 20px;border:1px solid #E9EBEA;border-radius:8px;max-width:720px;margin:0 auto">${repHeader('Attrition report, ' + year, repScopeText(dept) + (loc ? ' / ' + loc.replace('+',' + ') : ''))}${kp}${monthly}${locTbl}${locDept}${reasons}${tenure}${byDept}${repFooter()}</div>`;
 }
 
 function repRenderEsat() {
@@ -8414,6 +8472,19 @@ function renderAttrition() {
       lrows.map(r => { const cls = r.rate>15?'r-red':r.rate>8?'r-amber':'r-green'; return `<tr><td><strong>${r.loc}</strong></td><td>${r.dept}</td><td>${r.active}</td><td>${r.vol||'-'}</td><td class="${cls}">${r.rate}%</td></tr>`; }).join('') + '</tbody>'
       : '<thead><tr><th style="color:#999;font-weight:400;text-align:left;padding:16px">No data for this selection.</th></tr></thead>';
   } catch(err) { console.error('Location view failed', err); }
+  try {
+    const lsel = document.getElementById('attr-loc-select'); locFillSelect(lsel);
+    const L = lsel.value;
+    let lp = ALL_EMPLOYEES.filter(e => locMatch(e, L) && (!sharedDeptFilter || e.dept === sharedDeptFilter));
+    let lr = computeLocAttrRows(lp, sharedYear); if (sharedMonth) lr = lr.filter(r => r.month.startsWith(MON_FULL[sharedMonth-1].slice(0,3)));
+    document.getElementById('attr-locsl-title').textContent = `Month by month — ${L==='Chennai+Coimbatore'?'Chennai + Coimbatore':(L||'all locations')}, ${sharedYear}${sharedDeptFilter?' — '+sharedDeptFilter:''}`;
+    document.getElementById('attr-locsl-note').innerHTML = 'Voluntary, immediate and early exits as a share of the average headcount of the selected location. YTD is the year so far; annualised is YTD scaled to 12 months. Immediate and early count all exits by tenure at exit (under 90 days, and 90 days up to a year).';
+    document.getElementById('attr-locsl-table').innerHTML = lr.length ? locAttrTableHTML(lr) : '<thead><tr><th style="color:#999;font-weight:400;text-align:left;padding:16px">No data for this selection.</th></tr></thead>';
+    const dr = locDeptRows(lp, sharedYear);
+    document.getElementById('attr-locdept-title').textContent = `Department-wise — ${L==='Chennai+Coimbatore'?'Chennai + Coimbatore':(L||'all locations')}, ${sharedYear}`;
+    document.getElementById('attr-locdept-table').innerHTML = dr.length ? locDeptTableHTML(dr) : '<thead><tr><th style="color:#999;font-weight:400;text-align:left;padding:16px">No data for this selection.</th></tr></thead>';
+  } catch(err) { console.error('Location slicer failed', err); }
+
 
   // View switcher — Overview / By Department / By Manager / Who Left / Backfill Gap.
   // Every view reads from the same filter above; switching views never changes the
