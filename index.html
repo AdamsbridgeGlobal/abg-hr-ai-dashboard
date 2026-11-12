@@ -1164,6 +1164,7 @@
       </select>
       <label style="font-size:.82rem;color:#0D3133;font-weight:700;margin-left:10px">BU Head:</label>
       <select class="bu-sel" onchange="onBuFilterChange(this.value)" title="Filters this whole tab to one BU Head's people" style="padding:8px 14px;border:1.5px solid #73847B;border-radius:6px;font-family:inherit;font-size:.85rem;font-weight:700;min-width:190px"><option value="">All BU Heads</option></select>
+      <label style="font-size:.82rem;color:#0D3133;font-weight:700;margin-left:10px">Location:</label><select id="attr-shared-loc-select" onchange="renderAttrition()" style="padding:8px 14px;border:1.5px solid #73847B;border-radius:6px;font-family:inherit;font-size:.85rem;font-weight:700;min-width:170px"><option value="">All locations</option></select>
       <select id="attr-shared-year-select" onchange="renderAttrition()" style="padding:8px 14px;border:1.5px solid #73847B;border-radius:6px;font-family:inherit;font-size:.85rem;font-weight:700"></select>
       <select id="attr-shared-month-select" onchange="renderAttrition()" style="padding:8px 14px;border:1.5px solid #73847B;border-radius:6px;font-family:inherit;font-size:.85rem;font-weight:700">
         <option value="">All months</option>
@@ -1185,6 +1186,18 @@
   </div>
 
   <div id="attr-view-overview">
+    <div class="card" style="border-top:3px solid #E69F50">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px">
+        <div class="ctitle" id="attr-locsl-title" style="margin:0">Month by month for one location</div>
+      </div>
+      <div class="note" style="margin:0 0 10px" id="attr-locsl-note"></div>
+      <div class="scrollbox"><table class="dt" id="attr-locsl-table"></table></div>
+    </div>
+    <div class="card">
+      <div class="ctitle" id="attr-locdept-title">Department-wise for the selected location</div>
+      <div class="note" style="margin:0 0 10px">Year to date, split by department. Follows the Location filter at the top. Annualised is YTD scaled to 12 months.</div>
+      <div class="scrollbox"><table class="dt" id="attr-locdept-table"></table></div>
+    </div>
     <div class="kstrip" id="attr-kstrip" style="grid-template-columns:repeat(4,1fr)"></div>
     <div id="attr-hiring-vs-attrition" style="margin-bottom:16px"></div>
 
@@ -1326,22 +1339,8 @@
   <div id="attr-view-loc" style="display:none">
     <div class="card" style="border-top:3px solid #0D3133">
       <div class="ctitle" id="attr-loc-title">Location — voluntary attrition, this year vs last year</div>
-      <div class="note" style="margin:0 0 10px">Follows the Year, Month, Department and BU Head filters above. Every location is shown side by side.</div>
+      <div class="note" style="margin:0 0 10px">Follows the Year, Month, Department and BU Head filters above. Every location is shown side by side, so the Location filter does not apply here.</div>
       <div id="attr-loc-scorecard"></div>
-    </div>
-    <div class="card" style="border-top:3px solid #E69F50">
-      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px">
-        <div class="ctitle" id="attr-locsl-title" style="margin:0">Month by month for one location</div>
-        <label style="font-size:.82rem;color:#0D3133;font-weight:700;margin-left:auto">Location:</label>
-        <select id="attr-loc-select" onchange="renderAttrition()" style="padding:8px 14px;border:1.5px solid #73847B;border-radius:6px;font-family:inherit;font-size:.85rem;font-weight:700;min-width:170px"><option value="">All locations</option></select>
-      </div>
-      <div class="note" style="margin:0 0 10px" id="attr-locsl-note"></div>
-      <div class="scrollbox"><table class="dt" id="attr-locsl-table"></table></div>
-    </div>
-    <div class="card">
-      <div class="ctitle" id="attr-locdept-title">Department-wise for the selected location</div>
-      <div class="note" style="margin:0 0 10px">Year to date for the location chosen above, split by department. Annualised is YTD scaled to 12 months.</div>
-      <div class="scrollbox"><table class="dt" id="attr-locdept-table"></table></div>
     </div>
     <div class="card">
       <div class="ctitle" id="attr-loc-month-title">Voluntary exits by month, by location</div>
@@ -8297,7 +8296,15 @@ function renderManagerHealth() {
 }
 
 
+var ATTR_ORIG = null;
 function renderAttrition() {
+  const lsel = document.getElementById('attr-shared-loc-select'); locFillSelect(lsel);
+  const L = lsel ? lsel.value : '';
+  ATTR_ORIG = ALL_EMPLOYEES;
+  if (L) ALL_EMPLOYEES = ATTR_ORIG.filter(e => locMatch(e, L));
+  try { renderAttritionInner(L); } finally { ALL_EMPLOYEES = ATTR_ORIG; }
+}
+function renderAttritionInner(LOC) {
   const ATTR_POP = ALL_EMPLOYEES;
   const exitedWithReason = ATTR_POP.filter(e => e.exitDate && e.resignType);
   const totalExited = ATTR_POP.filter(e => e.exitDate).length;
@@ -8441,7 +8448,8 @@ function renderAttrition() {
       : '<thead><tr><th style="color:#999;font-weight:400;text-align:left;padding:16px">No data for this selection.</th></tr></thead>';
   } catch(err) { console.error('BU Head view failed', err); }
 
-  // ── By Location view ──
+  // ── By Location view — compares every location side by side, so it ignores the Location filter ──
+  const __filtered = ALL_EMPLOYEES; ALL_EMPLOYEES = ATTR_ORIG;
   try {
     const locPool = ALL_EMPLOYEES.filter(e => e.branch && (!sharedDeptFilter || e.dept === sharedDeptFilter));
     document.getElementById('attr-loc-title').textContent = `Location — voluntary attrition, ${sharedMonth?MON_FULL[sharedMonth-1]+' ':''}${sharedYear} vs ${sharedYear-1}${sharedDeptFilter?' — '+sharedDeptFilter:''}${BU_FILTER?' — '+BU_FILTER+"'s group":''}`;
@@ -8472,10 +8480,10 @@ function renderAttrition() {
       lrows.map(r => { const cls = r.rate>15?'r-red':r.rate>8?'r-amber':'r-green'; return `<tr><td><strong>${r.loc}</strong></td><td>${r.dept}</td><td>${r.active}</td><td>${r.vol||'-'}</td><td class="${cls}">${r.rate}%</td></tr>`; }).join('') + '</tbody>'
       : '<thead><tr><th style="color:#999;font-weight:400;text-align:left;padding:16px">No data for this selection.</th></tr></thead>';
   } catch(err) { console.error('Location view failed', err); }
+  ALL_EMPLOYEES = __filtered;
   try {
-    const lsel = document.getElementById('attr-loc-select'); locFillSelect(lsel);
-    const L = lsel.value;
-    let lp = ALL_EMPLOYEES.filter(e => locMatch(e, L) && (!sharedDeptFilter || e.dept === sharedDeptFilter));
+    const L = LOC;
+    let lp = ALL_EMPLOYEES.filter(e => (!sharedDeptFilter || e.dept === sharedDeptFilter));
     let lr = computeLocAttrRows(lp, sharedYear); if (sharedMonth) lr = lr.filter(r => r.month.startsWith(MON_FULL[sharedMonth-1].slice(0,3)));
     document.getElementById('attr-locsl-title').textContent = `Month by month — ${L==='Chennai+Coimbatore'?'Chennai + Coimbatore':(L||'all locations')}, ${sharedYear}${sharedDeptFilter?' — '+sharedDeptFilter:''}`;
     document.getElementById('attr-locsl-note').innerHTML = 'Voluntary, immediate and early exits as a share of the average headcount of the selected location. YTD is the year so far; annualised is YTD scaled to 12 months. Immediate and early count all exits by tenure at exit (under 90 days, and 90 days up to a year).';
