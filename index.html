@@ -1399,6 +1399,12 @@
     <div class="kstrip secondary" id="ta-exec-kstrip-more" style="grid-template-columns:repeat(6,1fr)"></div>
     <div class="insight" id="ta-exec-intro"></div>
 
+    <div class="card" id="ta-exec-prio-card" style="display:none;border-top:3px solid #E69F50">
+      <div class="ctitle">Open positions by priority</div>
+      <div class="note" style="margin:0 0 10px">From the Priority column of the Open Requirements sheet, as of today. Average days open is weighted by the number of positions. "Open with no active candidates" counts open positions in departments that have no candidate in process right now.</div>
+      <div class="scrollbox"><table class="dt" id="ta-exec-prio-table"></table></div>
+    </div>
+
     <div class="card">
       <div class="ctitle">Monthly Hiring Demand vs. Delivery — last 6 months</div>
       <div class="note" style="margin:0 0 10px">Demand = positions requested that month (Req received date). Accepted = offers accepted that month (LOI Accept Date). Joined = confirmed joins that month (DOJ). A historical "Open" trend isn't shown — this data only reflects what's open right now, not what was open in any past month.</div>
@@ -1465,6 +1471,9 @@
         <select id="ta-dp-hiringmgr-select" onchange="renderTalentAcquisition()" style="padding:7px 12px;border:1px solid #ccc;border-radius:6px;font-family:inherit;font-size:.8rem">
           <option value="">All Hiring Managers</option>
         </select>
+        <select id="ta-dp-priority-select" onchange="renderTalentAcquisition()" style="padding:7px 12px;border:1px solid #ccc;border-radius:6px;font-family:inherit;font-size:.8rem;display:none">
+          <option value="">All Priorities</option>
+        </select>
         <select id="ta-dp-recruiter-select" onchange="renderTalentAcquisition()" style="padding:7px 12px;border:1px solid #ccc;border-radius:6px;font-family:inherit;font-size:.8rem">
           <option value="">All Recruiters (pipeline table only)</option>
         </select>
@@ -1472,6 +1481,12 @@
     </div>
 
     <div class="insight" id="ta-dp-intro"></div>
+
+    <div class="card" id="ta-dp-prio-card" style="display:none;border-top:3px solid #E69F50">
+      <div class="ctitle">Open positions by priority</div>
+      <div class="note" style="margin:0 0 10px">Follows the filters above. Average days open is weighted by the number of positions.</div>
+      <div class="scrollbox"><table class="dt" id="ta-dp-prio-table"></table></div>
+    </div>
 
     <div class="card">
       <div class="ctitle">Open Positions by BU Head</div>
@@ -1906,6 +1921,7 @@ async function loadTalentAcquisitionData(token) {
         joined: findCol(headers, ['Joined']),
         openPosition: findCol(headers, ['Open Position']),
         comment: findCol(headers, ['Comment']),
+        priority: findCol(headers, ['Priority']),
       };
       const numOrNull = v => {
         if (typeof v === 'number') return v;
@@ -1981,6 +1997,7 @@ async function loadTalentAcquisitionData(token) {
           // silently inflated Open Position and Total Hiring Demand.
           openPosition: Math.max(0, numOr0(I.target>=0 ? r[I.target] : null) - numOr0(I.joined>=0 ? r[I.joined] : null) - numOr0(I.loiAccept>=0 ? r[I.loiAccept] : null) - numOr0(I.loiPending>=0 ? r[I.loiPending] : null) - numOr0(I.docPending>=0 ? r[I.docPending] : null)),
           comment: String(I.comment>=0 ? (r[I.comment]||'') : '').trim(),
+          priority: taPrioLabel(I.priority>=0 ? r[I.priority] : ''),
         }));
       console.log(`TA: loaded ${TA_OPEN_REQS.length} open requisitions from Open Requirements (${TA_OPEN_REQS.reduce((s,r)=>s+r.openPosition,0)} total open positions).`);
 
@@ -4470,13 +4487,15 @@ function getTAFilteredOpenReqs() {
   const dept = (document.getElementById('ta-dp-dept-select')||{}).value || '';
   const location = (document.getElementById('ta-dp-location-select')||{}).value || '';
   const hiringMgr = (document.getElementById('ta-dp-hiringmgr-select')||{}).value || '';
+  const prio = (document.getElementById('ta-dp-priority-select')||{}).value || '';
   const periodLabelFn = periodType === 'month' ? taMonthLabel : taQuarterLabel;
   return TA_OPEN_REQS.filter(r =>
     (!period || periodLabelFn(r.reqDate) === period) &&
     (!buHead || r.buHead === buHead) &&
     (!dept || r.department === dept) &&
     (!location || r.location === location) &&
-    (!hiringMgr || r.hiringManager === hiringMgr)
+    (!hiringMgr || r.hiringManager === hiringMgr) &&
+    (!prio || taPrioName(r.priority) === prio)
   );
 }
 
@@ -4519,6 +4538,36 @@ function computeOpenByRole(openReqs) {
 // counts of currently-active candidates per open requirement.
 // One line under the department so separate requisitions of the same department read as different rows:
 // month the requisition was raised, position type (New / Backfill) and skill set, whichever are on file.
+// ── Priority (Open Requirements, column "Priority") ──
+// The value is shown as typed in the tracker (tidied to title case). Common words are ranked so
+// lists sort most urgent first: Critical/Urgent, High, Medium, Low, then anything else.
+function taPrioLabel(v) { const t = String(v == null ? '' : v).trim().replace(/\s+/g, ' '); if (!t) return ''; return /^p\d$/i.test(t) ? t.toUpperCase() : t.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()); }
+function taPrioRank(p) { p = String(p || '').toLowerCase(); if (!p) return 9; if (/critical|urgent|immediate|top|^p0$/.test(p)) return 0; if (/high|^p1$|^1$/.test(p)) return 1; if (/med|normal|^p2$|^2$/.test(p)) return 2; if (/low|^p3$|^3$/.test(p)) return 3; return 5; }
+function taPrioColor(p) { return ({ 0: '#B3261E', 1: '#D13438', 2: '#DA8A00', 3: '#107C10' })[taPrioRank(p)] || '#73847B'; }
+function taPrioName(p) { return p || 'Other'; }
+function taPrioBadge(p) { if (!p) return '<span style="color:#999">-</span>'; return '<span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:.72rem;font-weight:700;color:#fff;white-space:nowrap;background:' + taPrioColor(p) + '">' + String(p).replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</span>'; }
+function taHasPriority(reqs) { return (reqs || TA_OPEN_REQS).some(r => r.priority); }
+// One row per priority: requirements and positions still open, offers made, how long they have been open,
+// and how many open positions sit in departments with no active candidate.
+function computeOpenByPriority(reqs, cands) {
+  const live = (cands || []).filter(c => !/reject|drop|no show|noshow|joined|offer decline|offer renege/i.test((c.finalStatus || '') + ' ' + (c.candidateStatus || '')));
+  const liveDept = new Set(live.map(c => c.department));
+  const m = {};
+  (reqs || []).filter(r => r.openPosition > 0 || (r.loiAccept + r.loiPending + r.docPending) > 0).forEach(r => {
+    const k = taPrioName(r.priority), x = m[k] || (m[k] = { priority: k, rank: r.priority ? taPrioRank(r.priority) : 9, reqs: 0, open: 0, inOffer: 0, ageSum: 0, ageN: 0, oldest: null, noPipe: 0 });
+    if (r.openPosition > 0) x.reqs++;
+    x.open += r.openPosition; x.inOffer += r.loiAccept + r.loiPending + r.docPending;
+    if (r.openPosition > 0 && r.ageing !== null && r.ageing !== undefined) { x.ageSum += r.ageing * r.openPosition; x.ageN += r.openPosition; x.oldest = x.oldest === null ? r.ageing : Math.max(x.oldest, r.ageing); }
+    if (r.openPosition > 0 && !liveDept.has(r.department)) x.noPipe += r.openPosition;
+  });
+  const tot = Object.values(m).reduce((a, x) => a + x.open, 0);
+  return Object.values(m).map(x => Object.assign(x, { avgAge: x.ageN ? Math.round(x.ageSum / x.ageN) : null, share: tot ? Math.round(x.open / tot * 100) : 0 }))
+    .sort((a, b) => a.rank - b.rank || b.open - a.open);
+}
+function taPriorityTableHTML(rows) {
+  return '<thead><tr><th>Priority</th><th>Requirements open</th><th>Positions open</th><th>Share of open</th><th>Offer made, yet to join</th><th>Average days open</th><th>Oldest (days)</th><th>Open with no active candidates</th></tr></thead><tbody>' +
+    rows.map(x => `<tr><td>${x.priority === 'Other' ? '<strong>Other</strong>' : taPrioBadge(x.priority)}</td><td>${x.reqs}</td><td><strong>${x.open}</strong></td><td>${x.share}%</td><td>${x.inOffer}</td><td>${x.avgAge === null ? '-' : x.avgAge}</td><td>${x.oldest === null ? '-' : x.oldest}</td><td>${x.noPipe ? '<strong style="color:#D13438">' + x.noPipe + '</strong>' : '0'}</td></tr>`).join('') + '</tbody>';
+}
 function taReqSubtitle(r) {
   const esc = t => String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;');
   const parts = [];
@@ -5608,14 +5657,19 @@ function repRenderTaw() {
     if (rows.length > CAP) { const rest = rows.slice(CAP - 1), agg = { n: 'All other departments (' + rest.length + ')', demand: 0, open: 0, inOffer: 0, raised: 0, sourced: 0, offered: 0, joined: 0 }; rest.forEach(x => { ['demand', 'open', 'inOffer', 'raised', 'sourced', 'offered', 'joined'].forEach(k => agg[k] += x[k]); }); rows = rows.slice(0, CAP - 1).concat([agg]); }
     if (rows.length) h += sec('By department') + tbl(['Department', 'Total to hire', 'Still open', 'Offer made, yet to join', 'New positions this week', 'Candidates this week', 'Offers this week', 'Joined this week'], rows.map(x => [esc(x.n), x.demand, x.open, x.inOffer, x.raised, x.sourced, x.offered, x.joined]), ['25%']);
   }
-  let ageing = '', oldest = '';
+  let ageing = '', oldest = '', prio = '';
+  const hasP = taHasPriority(reqs);
   try {
     const ag = computeRequisitionAgeing(reqs, TA_FINAL_SELECT); const tot = Object.values(ag.buckets).reduce((a, b) => a + b, 0);
     if (tot) ageing = sec('How long positions have been open') + tbl(['Open for', 'Positions', 'Share'], Object.entries(ag.buckets).map(([k, v]) => [k === '60d+' ? 'Over 60 days' : k.replace('d', ' days'), v, Math.round(v / tot * 100) + '%']), ['50%', '25%', '25%']);
-    const old = reqs.filter(r => r.openPosition > 0 && r.ageing !== null).sort((a, b) => b.ageing - a.ageing).slice(0, 6);
-    if (old.length) oldest = sec('Positions open the longest') + tbl(['Department and skill', 'Type', 'Still open', 'Days open'], old.map(r => [esc(tawDeptName(r.department) + (r.skillSet ? ' — ' + r.skillSet : '')), /not recorded/i.test(r.posType) ? '-' : esc(r.posType), r.openPosition, r.ageing]), ['50%', '18%', '16%', '16%']);
+    if (hasP) { const pr = computeOpenByPriority(reqs, cands); if (pr.length) prio = sec('Open positions by priority') + tbl(['Priority', 'Positions', 'Average days', 'Oldest'], pr.map(x => ['<strong style="color:' + (x.priority === 'Other' ? '#555' : taPrioColor(x.priority)) + '">' + esc(x.priority) + '</strong>', x.open, x.avgAge === null ? '-' : x.avgAge, x.oldest === null ? '-' : x.oldest]), ['40%', '20%', '22%', '18%']); }
+    const old = reqs.filter(r => r.openPosition > 0 && r.ageing !== null).sort((a, b) => b.ageing - a.ageing).slice(0, hasP ? 7 : 6);
+    if (old.length) oldest = sec('Positions open the longest') + (hasP
+      ? tbl(['Department and skill', 'Priority', 'Type', 'Still open', 'Days open'], old.map(r => [esc(tawDeptName(r.department) + (r.skillSet ? ' — ' + r.skillSet : '')), r.priority ? '<strong style="color:' + taPrioColor(r.priority) + '">' + esc(r.priority) + '</strong>' : '-', /not recorded/i.test(r.posType) ? '-' : esc(r.posType), r.openPosition, r.ageing]), ['46%', '15%', '15%', '12%', '12%'])
+      : tbl(['Department and skill', 'Type', 'Still open', 'Days open'], old.map(r => [esc(tawDeptName(r.department) + (r.skillSet ? ' — ' + r.skillSet : '')), /not recorded/i.test(r.posType) ? '-' : esc(r.posType), r.openPosition, r.ageing]), ['50%', '18%', '16%', '16%']));
   } catch (e) { console.error('weekly TA ageing failed', e); }
-  if (ageing || oldest) h += two(ageing, oldest);
+  if (prio) { h += two(prio, ageing); if (oldest) h += oldest; }
+  else if (ageing || oldest) h += two(ageing, oldest);
   const lines = [];
   { const nw = tawShift(w, 1); if (nw.e >= new Date()) { const dj = cands.filter(c => c.doj && c.doj >= nw.s && c.doj <= nw.e && !/joined|decline|renege|reject|drop|no show|noshow/i.test(c.candidateStatus || '')); const m = {}; dj.forEach(c => { const k = tawDeptName(c.department); m[k] = (m[k] || 0) + 1; });
       if (dj.length) lines.push('<strong style="color:' + T + '">Expected to join next week (' + tawLabel(nw, true) + '):</strong> ' + dj.length + (dj.length === 1 ? ' person' : ' people') + ' — ' + Object.entries(m).sort((a, b) => b[1] - a[1]).map(x => esc(x[0]) + ' ' + x[1]).join(', ') + '.'); } }
@@ -9817,6 +9871,11 @@ function renderTalentAcquisition() {
     kpi('Offer Accepted, Awaiting DOJ', awaitingDOJCount, 'accepted or docs pending, not yet joined') +
     kpi('Real Avg Time to Fill', closureStats.avgDays!==null?closureStats.avgDays+' days':' - ', closureStats.sampleSize+' real closures, req received to DOJ (median '+(closureStats.medianDays!==null?closureStats.medianDays+'d':'—')+')');
 
+  try {
+    const prE = taHasPriority() ? computeOpenByPriority(TA_OPEN_REQS, TA_CANDIDATES) : [];
+    document.getElementById('ta-exec-prio-card').style.display = prE.length ? '' : 'none';
+    if (prE.length) document.getElementById('ta-exec-prio-table').innerHTML = taPriorityTableHTML(prE);
+  } catch (e) { console.error('TA priority (exec) failed', e); }
   document.getElementById('ta-exec-intro').innerHTML =
     `Right now: <strong>${achievement.totalDemand}</strong> real positions asked for across active requisitions — <strong>${totalOpen}</strong> genuinely unclaimed, <strong>${achievement.inOffer}</strong> already in offer or documentation. Over the last 6 months, we've raised demand for <strong>${achievement.periodDemand}</strong> positions and joined <strong>${achievement.periodJoined}</strong> — a <strong>${achievement.achievementPct!==null?achievement.achievementPct+'%':'not yet measurable'}</strong> hiring pace.`;
 
@@ -9918,6 +9977,11 @@ function renderTalentAcquisition() {
   if (hiringMgrSel.options.length === 1) {
     [...new Set(TA_OPEN_REQS.map(r=>r.hiringManager).filter(Boolean))].sort().forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v; hiringMgrSel.appendChild(o); });
   }
+  const prioSel = document.getElementById('ta-dp-priority-select');
+  if (prioSel && prioSel.options.length === 1 && taHasPriority()) {
+    prioSel.style.display = '';
+    [...new Set(TA_OPEN_REQS.map(r => taPrioName(r.priority)))].sort((a, b) => (a === 'Other' ? 9 : taPrioRank(a)) - (b === 'Other' ? 9 : taPrioRank(b)) || a.localeCompare(b)).forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v; prioSel.appendChild(o); });
+  }
   if (recruiterSel.options.length === 1) {
     [...new Set(TA_CANDIDATES.map(c=>c.recruiterName).filter(v=>v&&v!=='(not recorded)'))].sort().forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v; recruiterSel.appendChild(o); });
   }
@@ -9952,10 +10016,17 @@ function renderTalentAcquisition() {
     `Bars show real open positions, not requisition count — a single requisition asking for many people counts fully in its bucket. ${dpAgeing.totalPositionsWithAgeing} positions across ${dpAgeing.totalWithAgeing} of ${dpAgeing.totalReqs} requisitions have a real ageing value on file (oldest ${dpAgeing.maxAgeing} days). Buckets: 0-15 Healthy, 16-30 Watch, 31-45 Attention, 46-60 Critical, 60+ Escalation.`;
 
   const dpPipeline = computePipelineByRequirement(dpOpenReqs, TA_CANDIDATES);
+  const hasPrio = taHasPriority();
+  if (hasPrio) dpPipeline.sort((a, b) => (a.priority ? taPrioRank(a.priority) : 9) - (b.priority ? taPrioRank(b.priority) : 9) || a.pipelineCount - b.pipelineCount);
+  try {
+    const pr = hasPrio ? computeOpenByPriority(dpOpenReqs, TA_CANDIDATES) : [];
+    document.getElementById('ta-dp-prio-card').style.display = pr.length ? '' : 'none';
+    if (pr.length) document.getElementById('ta-dp-prio-table').innerHTML = taPriorityTableHTML(pr);
+  } catch (e) { console.error('TA priority (D&P) failed', e); }
   document.getElementById('ta-dp-pipeline-table').innerHTML = dpPipeline.length
-    ? '<thead><tr><th>Department</th><th>BU Head</th><th>Hiring Manager</th><th>Open Positions</th><th>Active Pipeline (dept-level)</th></tr></thead><tbody>' +
-      dpPipeline.map(r => `<tr><td>${r.department}${taReqSubtitle(r)}</td><td>${r.buHead}</td><td>${r.hiringManager||' - '}</td><td>${r.openPosition}</td><td><strong style="color:${r.pipelineCount===0?'#D13438':r.pipelineCount<3?'#DA8A00':'#107C10'}">${r.pipelineCount}</strong></td></tr>`).join('') + '</tbody>'
-    : '<tbody><tr><td colspan="5" style="text-align:center;color:#999;padding:12px">No open requisitions match the current filters.</td></tr></tbody>';
+    ? '<thead><tr>' + (hasPrio ? '<th>Priority</th>' : '') + '<th>Department</th><th>BU Head</th><th>Hiring Manager</th><th>Open Positions</th><th>Active Pipeline (dept-level)</th></tr></thead><tbody>' +
+      dpPipeline.map(r => `<tr>${hasPrio ? '<td>' + taPrioBadge(r.priority) + '</td>' : ''}<td>${r.department}${taReqSubtitle(r)}</td><td>${r.buHead}</td><td>${r.hiringManager||' - '}</td><td>${r.openPosition}</td><td><strong style="color:${r.pipelineCount===0?'#D13438':r.pipelineCount<3?'#DA8A00':'#107C10'}">${r.pipelineCount}</strong></td></tr>`).join('') + '</tbody>'
+    : '<tbody><tr><td colspan="6" style="text-align:center;color:#999;padding:12px">No open requisitions match the current filters.</td></tr></tbody>';
 
   // ══════════════════════════════════════════════════════════════════
   // TA PERFORMANCE (Phase 3)  -  where the TA team's own delivery is
@@ -10093,6 +10164,15 @@ function buildTADeptReportHTML(dept, periodType, year, month, half) {
     ? report.sourceMix.map(s => barRow(s.source, s.count, maxSource, '#0D3133')).join('')
     : `<tr><td colspan="3" style="padding:8px 0;color:#999;font-size:.78rem">No candidates sourced in this period.</td></tr>`;
 
+  let prioBlock = '';
+  try {
+    const pReqs = dept ? TA_OPEN_REQS.filter(r => r.department === dept) : TA_OPEN_REQS;
+    const pr = taHasPriority(pReqs) ? computeOpenByPriority(pReqs, TA_CANDIDATES) : [];
+    const td = (v, b) => `<td style="padding:4px 6px;font-size:.76rem;text-align:right;border-bottom:1px solid #EEF0EF${b ? ';font-weight:700' : ''}">${v}</td>`;
+    if (pr.length) prioBlock = `<div style="font-weight:700;font-size:.85rem;color:#0D3133;margin-bottom:6px">Open Positions by Priority - current snapshot, ${deptLabel}</div>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:16px"><tr style="background:#0D3133;color:#fff;font-size:.7rem"><th style="text-align:left;padding:4px 6px">Priority</th><th style="text-align:right;padding:4px 6px">Requirements</th><th style="text-align:right;padding:4px 6px">Positions open</th><th style="text-align:right;padding:4px 6px">Share</th><th style="text-align:right;padding:4px 6px">Offer made</th><th style="text-align:right;padding:4px 6px">Avg days open</th><th style="text-align:right;padding:4px 6px">Oldest</th></tr>` +
+      pr.map(x => `<tr><td style="padding:4px 6px;font-size:.76rem;border-bottom:1px solid #EEF0EF;font-weight:700;color:${x.priority === 'Other' ? '#555' : taPrioColor(x.priority)}">${x.priority}</td>${td(x.reqs)}${td(x.open, 1)}${td(x.share + '%')}${td(x.inOffer)}${td(x.avgAge === null ? '-' : x.avgAge)}${td(x.oldest === null ? '-' : x.oldest)}</tr>`).join('') + '</table>';
+  } catch (e) { console.error('TA report priority failed', e); }
   const ageingRows = Object.entries(report.ageing.buckets).map(([bucket,count]) =>
     `<tr><td style="padding:3px 0;font-size:.78rem">${bucket} (${report.ageing.bucketStatus[bucket]})</td><td style="padding:3px 0;text-align:right;font-weight:700;font-size:.78rem">${count}</td></tr>`
   ).join('');
@@ -10129,7 +10209,7 @@ function buildTADeptReportHTML(dept, periodType, year, month, half) {
 
     <div style="font-weight:700;font-size:.85rem;color:#0D3133;margin-bottom:6px">Open Positions by Ageing - current snapshot, ${deptLabel}</div>
     <table style="width:60%;border-collapse:collapse;margin-bottom:16px">${ageingRows}</table>
-
+${prioBlock}
     <div style="font-size:.66rem;color:#aaa;margin-top:10px;border-top:1px solid #E9EBEA;padding-top:8px">Adamsbridge Talent Acquisition - confidential, for internal leadership use only. Total Demand and Open Positions reflect the current snapshot for ${deptLabel}; Funnel, Source Mix, and Joined are scoped to ${periodLabel} specifically.</div>
   </div>`;
 
