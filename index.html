@@ -440,10 +440,11 @@
   <div id="rep-taw-preview"></div>
 </div>
 <div class="rep-sub" id="prep-ta">
-  <div class="tab-banner"><strong>Talent Acquisition report.</strong> choose a department and a month or half-month, check the preview, then download.</div>
+  <div class="tab-banner"><strong>Talent Acquisition report.</strong> choose who it is for, a department and a month or half-month, check the preview, then download. The business version answers one question: will the business have the people it asked for, and when.</div>
   <div class="card" style="background:#F5F4F2;border:1.5px solid #73847B">
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-      <label style="font-size:.82rem;color:#0D3133;font-weight:700">Report preview:</label>
+      <label style="font-size:.82rem;color:#0D3133;font-weight:700">For:</label>
+      <select id="ta-report-audience" onchange="renderTAReportPreview()" style="padding:8px 14px;border:1.5px solid #73847B;border-radius:6px;font-family:inherit;font-size:.85rem;font-weight:700"><option value="biz">Business leaders (one page)</option><option value="ta">TA team (detailed)</option></select>
       <select id="ta-report-dept-select" onchange="taUpdateReportPeriodOptions(); renderTAReportPreview()" style="padding:8px 14px;border:1.5px solid #73847B;border-radius:6px;font-family:inherit;font-size:.85rem;font-weight:700;min-width:180px">
         <option value="">All Departments</option>
       </select>
@@ -10162,6 +10163,7 @@ function buildTADeptReportHTML(dept, periodType, year, month, half) {
   ].join('');
 
   const maxSource = Math.max(1, ...report.sourceMix.map(s=>s.count));
+  report.sourceMix = report.sourceMix.filter(s => s.source && !/not recorded/i.test(s.source));
   const sourceRows = report.sourceMix.length
     ? report.sourceMix.map(s => barRow(s.source, s.count, maxSource, '#0D3133')).join('')
     : `<tr><td colspan="3" style="padding:8px 0;color:#999;font-size:.78rem">No candidates sourced in this period.</td></tr>`;
@@ -10261,13 +10263,113 @@ function taUpdateReportPeriodOptions() {
       valueSel.appendChild(o);
     }
   });
-  if (valueSel.options.length) valueSel.selectedIndex = valueSel.options.length - 1; // default to most recent real period for THIS department
+  // default to the current period (planned joining dates can create future months); otherwise the most recent one
+  if (valueSel.options.length) { const t = new Date(), y = t.getFullYear(), m = t.getMonth() + 1, h = t.getDate() <= 15 ? 1 : 2; const want = periodType === 'biweekly' ? `${y}-${m}-${h}` : `${y}-${m}`; const opts = [...valueSel.options].map(o => o.value);
+    const ix = opts.indexOf(want); valueSel.selectedIndex = ix >= 0 ? ix : (() => { let k = -1; opts.forEach((v, i) => { const p = v.split('-').map(Number); if (p[0] * 12 + p[1] <= y * 12 + m) k = i; }); return k >= 0 ? k : opts.length - 1; })(); }
 }
 
 // Renders the exact same report content the PDF will contain, directly
 // onto the page — so what's downloaded is never a surprise. Both this and
 // the download button call the same buildTADeptReportHTML output; there is
 // no separate "preview version" that could drift from the real PDF.
+// ── Talent Acquisition report for business leaders — one A4 page ──
+// Answers: will the business have the people it asked for, and when. All "today" figures come from the
+// Open Requirements sheet so they add up to the total; period figures come from the candidate tracker.
+let TAL_FILE = 'Adamsbridge_Hiring_Update.pdf';
+async function opDownloadPage(selector, file, st) {
+  const src = document.querySelector(selector);
+  if (!src || !window.jspdf || !window.html2canvas) { if (st) st.textContent = 'PDF library not loaded. Check your connection and try again.'; return; }
+  const wrap = document.createElement('div');
+  try {
+    if (st) st.textContent = 'Generating PDF…';
+    wrap.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff'; wrap.appendChild(src.cloneNode(true)); document.body.appendChild(wrap);
+    const cv = await html2canvas(wrap.firstChild, { scale: 2, useCORS: true, backgroundColor: '#ffffff', width: 794, height: 1123, windowWidth: 794 });
+    const { jsPDF } = window.jspdf; const doc = new jsPDF('p', 'pt', 'a4'); doc.addImage(cv.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 595.28, 841.89); doc.save(file);
+    if (st) st.textContent = 'Downloaded.';
+  } catch (err) { console.error('PDF failed', err); if (st) st.textContent = 'PDF generation failed. Please try again.'; }
+  finally { if (wrap.parentNode) document.body.removeChild(wrap); }
+}
+function talBizPreview(dept, periodType, year, month, half) {
+  const T = '#0D3133', O = '#E69F50', G = '#107C10', A = '#DA8A00', PW = 794, PH = 1123, W = 722, AV = PH - 10 - 22 - 44;
+  const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'], MONF = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const esc = v => String(v == null ? '' : v).replace(/[&<>]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch]));
+  const dn = d => (!d || /not recorded/i.test(d)) ? 'Other' : d;
+  const { start, end } = taGetPeriodBounds(periodType, year, month, half);
+  const inP = d => d && d >= start && d <= end;
+  const pLabel = periodType === 'biweekly' ? (half === 1 ? '1–15 ' : '16–' + end.getUTCDate() + ' ') + MON[month - 1] + ' ' + year : MONF[month - 1] + ' ' + year;
+  const today = new Date(), gen = today.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  TAL_FILE = 'Adamsbridge_Hiring_Update_' + pLabel.replace(/[–\s]+/g, '_') + '_' + (dept || 'All_Departments').replace(/\s+/g, '_') + '.pdf';
+  const reqs = dept ? TA_OPEN_REQS.filter(r => r.department === dept) : TA_OPEN_REQS;
+  const cands = dept ? TA_CANDIDATES.filter(c => c.department === dept) : TA_CANDIDATES;
+  const page = inner => '<div style="display:flex;justify-content:center;overflow-x:auto"><div style="box-shadow:0 2px 10px rgba(0,0,0,.18)"><div class="tal-page" style="width:' + PW + 'px;height:' + PH + 'px;background:#fff;position:relative;overflow:hidden;font-family:' + OP_FONT + ';color:#222;box-sizing:border-box"><div style="height:10px;background:' + O + '"></div><div style="padding:22px 36px 0">' + opFit(inner, W, AV) + '</div><div style="position:absolute;left:36px;right:36px;bottom:12px;border-top:1px solid #E1E5E3;padding-top:6px;font-size:9px;color:#999">Adamsbridge &middot; confidential, for internal leadership use only. "Today" figures come from the Open Requirements sheet as of ' + gen + '; figures for ' + esc(pLabel) + ' come from the candidate tracker.</div></div></div></div>';
+  const head = '<div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid ' + T + ';padding-bottom:8px"><div><div style="font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:' + O + ';font-weight:700">Adamsbridge &middot; Talent Acquisition</div><div style="font-size:24px;font-weight:800;color:' + T + ';line-height:1.15">Hiring update for the business</div></div><div style="text-align:right"><div style="font-size:15px;font-weight:800;color:' + T + '">' + esc(pLabel) + '</div><div style="font-size:10.5px;color:#555">' + esc(dept || 'All departments') + ' &middot; generated ' + gen + '</div></div></div>';
+  if (!reqs.length && !cands.length) return page(head + '<div style="font-size:12px;color:#555;margin:14px 0">The hiring tracker has not loaded in this session. Refresh the dashboard and try again.</div>');
+  // today
+  const sum = k => reqs.reduce((a, r) => a + (r[k] || 0), 0);
+  const demand = sum('target'), open = sum('openPosition'), acc = sum('loiAccept') + sum('docPending'), wait = sum('loiPending'), joined = Math.max(0, demand - open - acc - wait);
+  const pc = n => demand ? Math.round(n / demand * 100) : 0;
+  // period
+  const joinedP = cands.filter(c => /joined/i.test(c.candidateStatus || '') && inP(c.doj)).length;
+  const offeredP = cands.filter(c => inP(c.loiIssuedDate)), accFromP = offeredP.filter(c => /loi accept|joined|document pending/i.test(c.candidateStatus || '')).length;
+  const acceptedP = cands.filter(c => inP(c.loiAcceptDate)).length, declinedP = offeredP.filter(c => /decline|renege/i.test(c.candidateStatus || '')).length;
+  const raisedP = reqs.filter(r => inP(r.reqDate)).reduce((a, r) => a + r.target, 0);
+  const accPct = offeredP.length ? Math.round(accFromP / offeredP.length * 100) : null;
+  // expected joiners: accepted, joining date ahead
+  const t0 = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
+  const ahead = cands.filter(c => /loi accept|document pending/i.test(c.candidateStatus || '') && c.doj && c.doj >= t0);
+  const d30 = new Date(+t0 + 30 * 864e5), n30 = ahead.filter(c => c.doj <= d30).length;
+  const hasP = taHasPriority(reqs);
+  const compose = vz => {
+    const vp = n => (Math.round(n * vz * 10) / 10) + 'px';
+    const sec = t => '<div style="display:flex;align-items:center;gap:8px;margin:' + vp(15) + ' 0 ' + vp(7) + '"><div style="width:5px;height:15px;background:' + O + ';border-radius:2px"></div><div style="font-size:13px;font-weight:800;color:' + T + '">' + t + '</div></div>';
+    const tile = (l, v, sub, col) => '<div style="flex:1;border:1px solid #E1E5E3;border-top:3px solid ' + (col || T) + ';border-radius:6px;padding:' + vp(7) + ' 10px;background:#FAFBFA"><div style="font-size:8.5px;color:#666;text-transform:uppercase;letter-spacing:.05em;font-weight:700">' + l + '</div><div style="font-size:24px;font-weight:800;color:' + T + ';line-height:1.15;margin:1px 0">' + v + '</div><div style="font-size:9.5px;color:#555">' + sub + '</div></div>';
+    const tbl = (hd, rows, widths, boldLast) => '<table style="width:100%;border-collapse:collapse;font-size:10.5px;table-layout:fixed"><thead><tr>' + hd.map((x, i) => '<th style="text-align:' + (i ? 'right' : 'left') + ';padding:' + vp(4) + ' 6px;background:' + T + ';color:#fff;font-weight:700;font-size:9.5px;' + (widths && widths[i] ? 'width:' + widths[i] : '') + '">' + x + '</th>').join('') + '</tr></thead><tbody>' + rows.map((r, k) => '<tr style="background:' + (k % 2 ? '#F7F8F8' : '#fff') + (boldLast && k === rows.length - 1 ? ';font-weight:700;border-top:1.5px solid ' + T : '') + '">' + r.map((x, i) => '<td style="text-align:' + (i ? 'right' : 'left') + ';padding:' + vp(3.5) + ' 6px;border-bottom:1px solid #EEF0EF;' + (i ? 'white-space:nowrap' : 'overflow-wrap:anywhere') + '">' + x + '</td>').join('') + '</tr>').join('') + '</tbody></table>';
+    const two = (a, b) => '<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px"><div>' + a + '</div><div>' + b + '</div></div>';
+    let h = head;
+    // 1. where hiring stands
+    h += sec('Where hiring stands today');
+    const seg = (n, c) => n > 0 ? '<div style="width:' + (n / Math.max(1, demand) * 100) + '%;background:' + c + '"></div>' : '';
+    h += '<div style="font-size:12px;line-height:1.55;margin-bottom:' + vp(7) + '">The business has asked for <strong>' + demand + '</strong> people. <strong>' + joined + '</strong> have joined, <strong>' + acc + '</strong> have accepted an offer and are yet to join, <strong>' + wait + '</strong> have an offer and have not replied yet, and <strong>' + open + '</strong> positions are still open.</div>';
+    h += '<div style="display:flex;height:' + vp(16) + ';border-radius:4px;overflow:hidden;background:#EEF0EF">' + seg(joined, G) + seg(acc, T) + seg(wait, O) + seg(open, '#C9CFCC') + '</div>';
+    h += '<div style="display:flex;gap:8px;margin-top:' + vp(8) + '">' + tile('Asked for', demand, 'positions requested') + tile('Joined', joined, pc(joined) + '% of what was asked', G) + tile('Accepted, yet to join', acc, pc(acc) + '%', T) + tile('Offer given, no reply yet', wait, pc(wait) + '%', O) + tile('Still open', open, pc(open) + '%, no one selected yet', '#9AA5A0') + '</div>';
+    // 2. the period
+    h += sec('In ' + esc(pLabel));
+    h += '<div style="display:flex;gap:8px">' + tile('People joined', joinedP, 'started work in the period') + tile('Offers accepted', acceptedP, 'said yes in the period') + tile('Offers given', offeredP.length, declinedP ? declinedP + ' of them later declined' : 'offer letters issued') + tile('Offer acceptance', accPct === null ? '-' : accPct + '%', accPct === null ? 'no offers in the period' : accFromP + ' of ' + offeredP.length + ' offers accepted') + tile('New positions asked for', raisedP, 'requested in the period') + '</div>';
+    // 3. by department
+    if (!dept) {
+      const m = {}; const g = d => m[dn(d)] || (m[dn(d)] = { n: dn(d), demand: 0, joined: 0, acc: 0, wait: 0, open: 0, high: 0, oldest: null });
+      reqs.forEach(r => { const x = g(r.department), a = r.loiAccept + r.docPending; x.demand += r.target; x.acc += a; x.wait += r.loiPending; x.open += r.openPosition; x.joined += Math.max(0, r.target - r.openPosition - a - r.loiPending); if (r.openPosition > 0 && r.priority && taPrioRank(r.priority) <= 1) x.high += r.openPosition; if (r.openPosition > 0 && r.ageing != null) x.oldest = x.oldest === null ? r.ageing : Math.max(x.oldest, r.ageing); });
+      let rows = Object.values(m).filter(x => x.demand).sort((a, b) => (a.n === 'Other') - (b.n === 'Other') || b.open - a.open || b.demand - a.demand);
+      const CAP = 10; if (rows.length > CAP) { const rest = rows.slice(CAP - 1), agg = { n: 'All other departments (' + rest.length + ')', demand: 0, joined: 0, acc: 0, wait: 0, open: 0, high: 0, oldest: null }; rest.forEach(x => { ['demand', 'joined', 'acc', 'wait', 'open', 'high'].forEach(k => agg[k] += x[k]); if (x.oldest !== null) agg.oldest = agg.oldest === null ? x.oldest : Math.max(agg.oldest, x.oldest); }); rows = rows.slice(0, CAP - 1).concat([agg]); }
+      const tot = rows.reduce((a, x) => { ['demand', 'joined', 'acc', 'wait', 'open', 'high'].forEach(k => a[k] += x[k]); return a; }, { demand: 0, joined: 0, acc: 0, wait: 0, open: 0, high: 0 });
+      const hd = ['Department', 'Asked for', 'Joined', 'Accepted, yet to join', 'No reply yet', 'Still open'].concat(hasP ? ['High priority open'] : []).concat(['Open longest (days)']);
+      const rr = rows.map(x => [esc(x.n), x.demand, x.joined, x.acc, x.wait, '<strong>' + x.open + '</strong>'].concat(hasP ? [x.high ? '<strong style="color:#D13438">' + x.high + '</strong>' : '0'] : []).concat([x.oldest === null ? '-' : x.oldest]));
+      rr.push(['Total', tot.demand, tot.joined, tot.acc, tot.wait, tot.open].concat(hasP ? [tot.high] : []).concat(['']));
+      h += sec('By department') + tbl(hd, rr, hasP ? ['24%'] : ['28%'], true);
+    }
+    if (dept) {
+      const op = reqs.filter(r => r.openPosition > 0).sort((a, b) => (a.priority ? taPrioRank(a.priority) : 9) - (b.priority ? taPrioRank(b.priority) : 9) || (b.ageing || 0) - (a.ageing || 0));
+      if (op.length) h += sec('Positions still open in ' + esc(dept)) + tbl(['Skill or role', 'Hiring manager'].concat(hasP ? ['Priority'] : []).concat(['Still open', 'Days open']), op.slice(0, 10).map(r => [esc(r.skillSet || '-'), esc(r.hiringManager || '-')].concat(hasP ? [r.priority ? '<strong style="color:' + taPrioColor(r.priority) + '">' + esc(r.priority) + '</strong>' : '-'] : []).concat([r.openPosition, r.ageing == null ? '-' : r.ageing])), hasP ? ['38%', '24%', '14%', '12%', '12%'] : ['44%', '32%', '12%', '12%']) + (op.length > 10 ? '<div style="font-size:10px;color:#666;margin-top:3px">and ' + (op.length - 10) + ' more</div>' : '');
+    }
+    // 4. still open by priority + expected joiners
+    let pr = '', ex = '';
+    if (hasP) { const p = computeOpenByPriority(reqs, cands).filter(x => x.open > 0); if (p.length) pr = sec('Still open, by priority') + tbl(['Priority', 'Positions', 'Average days open', 'Oldest (days)'], p.map(x => ['<strong style="color:' + (x.priority === 'Other' ? '#555' : taPrioColor(x.priority)) + '">' + esc(x.priority) + '</strong>', x.open, x.avgAge === null ? '-' : x.avgAge, x.oldest === null ? '-' : x.oldest]), ['36%', '20%', '26%', '18%']); }
+    { const months = {}; ahead.forEach(c => { const k = c.doj.getUTCFullYear() * 12 + c.doj.getUTCMonth(); months[k] = (months[k] || 0) + 1; });
+      const ks = Object.keys(months).map(Number).sort((a, b) => a - b), shown = ks.slice(0, 3), later = ks.slice(3).reduce((a, k) => a + months[k], 0);
+      const rows = shown.map(k => [MONF[k % 12] + ' ' + Math.floor(k / 12), months[k]]); if (later) rows.push(['Later', later]); rows.push(['Total', ahead.length]);
+      ex = sec('Expected to join') + (ahead.length ? '<div style="font-size:10.5px;color:#444;margin-bottom:' + vp(5) + '"><strong>' + ahead.length + '</strong> people have accepted and have a joining date ahead; <strong>' + n30 + '</strong> of them join in the next 30 days.</div>' + tbl(['Joining month', 'People'], rows, ['70%', '30%'], true) : '<div style="font-size:11px;color:#444">No accepted offer has a joining date ahead.</div>'); }
+    h += pr ? two(pr, ex) : ex;
+    // 5. long-open priority positions
+    const longOpen = reqs.filter(r => r.openPosition > 0 && r.ageing != null && r.ageing > 30 && (!hasP || (r.priority && taPrioRank(r.priority) <= 1))).sort((a, b) => b.ageing - a.ageing);
+    const ttl = hasP ? 'High-priority positions open more than 30 days' : 'Positions open more than 30 days';
+    if (longOpen.length) h += sec(ttl) + tbl(['Department and skill', 'BU Head', 'Still open', 'Days open'], longOpen.slice(0, 6).map(r => [esc(dn(r.department) + (r.skillSet ? ' — ' + r.skillSet : '')), esc(/not recorded/i.test(r.buHead) ? '-' : r.buHead), r.openPosition, r.ageing]), ['52%', '24%', '12%', '12%']) + (longOpen.length > 6 ? '<div style="font-size:10px;color:#666;margin-top:3px">and ' + (longOpen.length - 6) + ' more</div>' : '');
+    else h += sec(ttl) + '<div style="font-size:11px;color:#444">None at the moment.</div>';
+    return h;
+  };
+  let h = ''; for (const v of [2.2, 2.1, 2, 1.9, 1.8, 1.7, 1.6, 1.5, 1.4, 1.3, 1.2, 1.1, 1]) { h = compose(v); if (opMeasure(h, W) <= AV - 6) break; }
+  return page(h);
+}
+
 function renderTAReportPreview() {
   const dept = document.getElementById('ta-report-dept-select').value;
   const periodType = document.getElementById('ta-report-period-type-select').value;
@@ -10277,7 +10379,8 @@ function renderTAReportPreview() {
   const parts = periodValue.split('-').map(Number);
   const year = parts[0], month = parts[1], half = parts[2];
   try {
-    container.innerHTML = buildTADeptReportHTML(dept, periodType, year, month, half);
+    if (((document.getElementById('ta-report-audience') || {}).value || 'biz') === 'biz') container.innerHTML = talBizPreview(dept, periodType, year, month, half);
+    else container.innerHTML = buildTADeptReportHTML(dept, periodType, year, month, half);
   } catch(e) {
     console.error('Report preview failed:', e);
     container.innerHTML = '<div style="padding:20px;color:#D13438;font-size:.85rem">Could not build the preview - check the console for details.</div>';
@@ -10285,6 +10388,7 @@ function renderTAReportPreview() {
 }
 
 function downloadTADeptReportPDF() {
+  if (((document.getElementById('ta-report-audience') || {}).value || 'biz') === 'biz') return opDownloadPage('#ta-report-preview-container .tal-page', TAL_FILE, document.getElementById('ta-report-status'));
   const statusEl = document.getElementById('ta-report-status');
   statusEl.textContent = 'Generating PDF...';
   const dept = document.getElementById('ta-report-dept-select').value;
