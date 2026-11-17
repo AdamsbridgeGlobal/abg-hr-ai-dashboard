@@ -1393,7 +1393,7 @@
       <select id="ta-joins-month-select" onchange="renderTalentAcquisition()" style="padding:6px 10px;border:1px solid #ccc;border-radius:6px;font-family:inherit;font-size:.78rem">
         <option value="">Whole year</option>
       </select>
-      <span style="font-size:.72rem;color:#999">Applies only to the "Joins" KPI card below</span>
+      <span style="font-size:.72rem;color:#999">Applies only to the "Joined in" card below</span>
     </div>
     <div class="kstrip" id="ta-exec-kstrip" style="grid-template-columns:repeat(6,1fr)"></div>
     <div class="kstrip secondary" id="ta-exec-kstrip-more" style="grid-template-columns:repeat(6,1fr)"></div>
@@ -9851,6 +9851,8 @@ function renderTalentAcquisition() {
   const riskItems = computeTARiskPanel(TA_CANDIDATES, TA_OPEN_REQS, execAgeing, byDept, criticalReqs);
 
   const awaitingDOJCount = TA_CANDIDATES.filter(c => /loi accept|document pending/i.test(c.candidateStatus||'')).length;
+  const docPendCount = TA_CANDIDATES.filter(c => /document pending/i.test(c.candidateStatus||'')).length;
+  const offerWaitCount = TA_CANDIDATES.filter(c => /loi offered/i.test(c.candidateStatus||'')).length;
   const offerAcceptPct = offerToJoin.loiOffered ? Math.round(offerToJoin.loiAccepted/offerToJoin.loiOffered*1000)/10 : null;
 
   const closureStats = computeFinalSelectClosureStats(TA_FINAL_SELECT);
@@ -9864,11 +9866,11 @@ function renderTalentAcquisition() {
     kpi('Hiring Pace, last 6 months', achievement.achievementPct!==null?achievement.achievementPct+'%':' - ', achievement.periodJoined+' joined vs '+achievement.periodDemand+' demanded, same window', achievement.achievementPct===null?'':achievement.achievementPct<20?'r':'g') +
     kpi('Offer Acceptance %', offerAcceptPct!==null?offerAcceptPct+'%':' - ', offerToJoin.loiAccepted+' of '+offerToJoin.loiOffered+' offers accepted', offerAcceptPct<70?'r':offerAcceptPct<85?'a':'g');
   document.getElementById('ta-exec-kstrip-more').innerHTML =
-    kpi('In Offer / Documentation', achievement.inOffer, 'LOI Accept + LOI Pending + Doc Pending') +
-    kpi('Joins - '+periodLabel, joinsPeriod.count, joinsPeriod.totalJoinedAllTime+' joined all-time') +
+    kpi('Offer accepted, yet to join', awaitingDOJCount, (docPendCount ? docPendCount+' of them with documents in progress' : 'said yes, joining date ahead')) +
+    kpi('Offer given, waiting for reply', offerWaitCount, 'candidate has not said yes or no yet') +
+    kpi('Joined in '+periodLabel, joinsPeriod.count, 'people who joined in '+periodLabel+'; '+joinsPeriod.totalJoinedAllTime+' since tracking began') +
     kpi('On Hold', totalOnHold, TA_HOLD_POSITIONS.length+' requisitions on hold, kept separate from open', totalOnHold>0?'a':'g') +
     kpi('Active Pipeline', activePipeline, 'candidates still in play right now') +
-    kpi('Offer Accepted, Awaiting DOJ', awaitingDOJCount, 'accepted or docs pending, not yet joined') +
     kpi('Real Avg Time to Fill', closureStats.avgDays!==null?closureStats.avgDays+' days':' - ', closureStats.sampleSize+' real closures, req received to DOJ (median '+(closureStats.medianDays!==null?closureStats.medianDays+'d':'—')+')');
 
   try {
