@@ -5413,12 +5413,13 @@ async function nlDownload() {
 // The content is measured off-screen; if it is taller than the page it is scaled down as one piece, so the result is always a single A4 page.
 const OP_FONT = "'Segoe UI',Calibri,Arial,sans-serif";
 function opMeasure(inner, W) { const pr = document.createElement('div'); pr.style.cssText = 'position:fixed;left:-9999px;top:0;width:' + W + 'px;font-family:' + OP_FONT + ';color:#222;box-sizing:border-box'; pr.innerHTML = inner; document.body.appendChild(pr); const h = pr.getBoundingClientRect().height; document.body.removeChild(pr); return h; }
-function opFit(inner, W, avail) { const h = opMeasure(inner, W); if (h <= avail) return '<div style="width:' + W + 'px">' + inner + '</div>'; const f = Math.max(0.45, avail / h); return '<div style="width:' + (W / f).toFixed(1) + 'px;transform:scale(' + f.toFixed(4) + ');transform-origin:top left">' + inner + '</div>'; }
+function opFit(inner, W, avail, grow) { const h = opMeasure(inner, W);
+  // a page with room to spare is set larger, as one piece, so it fills the sheet
+  if (grow && h < avail * 0.95) { for (const g of [1.3, 1.25, 1.2, 1.15, 1.1, 1.05]) { if (opMeasure(inner, W / g) * g <= avail) return '<div style="width:' + (W / g).toFixed(1) + 'px;transform:scale(' + g + ');transform-origin:top left">' + inner + '</div>'; } }
+  if (h <= avail) return '<div style="width:' + W + 'px">' + inner + '</div>'; const f = Math.max(0.45, avail / h); return '<div style="width:' + (W / f).toFixed(1) + 'px;transform:scale(' + f.toFixed(4) + ');transform-origin:top left">' + inner + '</div>'; }
 function opClip(t, n) { t = String(t || '').replace(/\s+/g, ' ').trim(); if (t.length <= n) return t; const c = t.slice(0, n), k = c.lastIndexOf(' '); return (k > n * 0.6 ? c.slice(0, k) : c).replace(/[\s,;:.\-]+$/, '') + '…'; }
 
 // ---------- newsletter: one page ----------
-const NL_KL = [{ ch: 140, bars: 1, nd: 8, nr: 6 }, { ch: 112, bars: 0, nd: 6, nr: 5 }, { ch: 112, bars: 0, nd: 4, nr: 4 }, { ch: 0, bars: 0, nd: 3, nr: 3 }];
-const NL_KR = [{ np: 6, ph: 112, ne: 6, sum: 200, rr: 110, no: 5, oc: 260 }, { np: 6, ph: 86, ne: 6, sum: 120, rr: 0, no: 4, oc: 150 }, { np: 6, ph: 86, ne: 8, sum: 0, rr: 0, no: 4, oc: 110 }, { np: 3, ph: 86, ne: 6, sum: 0, rr: 0, no: 3, oc: 110 }, { np: 3, ph: 86, ne: 4, sum: 0, rr: 0, no: 3, oc: 70 }];
 function nlPages(D) {
   const lay = (document.getElementById('nl-layout') || {}).value || 'one';
   if (lay === 'full') return nlPaginate(nlBlocks(D), D);
@@ -5427,59 +5428,110 @@ function nlPages(D) {
   return [nlOnePage(D, 1 + probe.length)].concat(probe);
 }
 function nlRelayout() { if (!NL.data) return; try { NL.pages = nlPages(NL.data); nlRenderPreview(); const st = document.getElementById('nl-status'); if (st) st.textContent = 'Layout changed: ' + NL.pages.length + (NL.pages.length === 1 ? ' page.' : ' pages.'); } catch (e) { console.error('newsletter layout failed', e); } }
-function nlOneInner(D, lvl, lvlR) {
-  const M = D.metrics, T = D.tracker, c = M.cur, p = M.prev, pl = M.prevLabel, mname = M.monthName + ' ' + M.y, CW = 354;
-  // density levels, fullest first; each column takes the fullest level that fits the page
-  const K = Object.assign({}, NL_KL[lvl], NL_KR[lvlR]);
-  const sec = t => '<div style="display:flex;align-items:center;gap:8px;margin:0 0 6px"><div style="width:5px;height:16px;background:' + NL_O + ';border-radius:2px"></div><div style="font-size:14px;font-weight:800;color:' + NL_T + '">' + t + '</div></div>';
-  const tile = (label, val, sub) => '<div style="flex:1;border:1px solid #E1E5E3;border-top:3px solid ' + NL_T + ';border-radius:6px;padding:7px 10px;background:#FAFBFA"><div style="font-size:9px;color:#666;text-transform:uppercase;letter-spacing:.05em;font-weight:700">' + label + '</div><div style="font-size:22px;font-weight:800;color:' + NL_T + ';line-height:1.15;margin:2px 0">' + val + '</div><div style="font-size:10px">' + sub + '</div></div>';
-  const row = (cols, cells, extra) => '<div style="display:grid;grid-template-columns:' + cols + ';padding:3.5px 6px;border-bottom:1px solid #EEF0EF;font-size:10.5px;' + (extra || '') + '">' + cells.join('') + '</div>';
-  const hd = (cols, labels) => '<div style="display:grid;grid-template-columns:' + cols + ';background:' + NL_T + ';color:#fff;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:4px 6px;border-radius:3px 3px 0 0">' + labels.map((l, i) => '<div' + (i ? ' style="text-align:right"' : '') + '>' + l + '</div>').join('') + '</div>';
+// The one-page newsletter lays itself out to the content of the month:
+//  - every section has fuller and tighter versions; each column takes the fullest versions that fit
+//  - sections are split between the two columns wherever the columns come out most even
+//  - charts and photos stretch to take up what is left, and in a light month the type is set larger
+// so a busy month is not cramped and a quiet month does not leave holes.
+function nlOneParts(D, z, CW, bare) {
+  const M = D.metrics, T = D.tracker, c = M.cur, p = M.prev, pl = M.prevLabel, mname = M.monthName + ' ' + M.y;
+  const f = n => (Math.round(n * z * 10) / 10) + 'px';
+  const sec = t => '<div style="display:flex;align-items:center;gap:8px;margin:0 0 ' + f(6) + '"><div style="width:5px;height:' + f(16) + ';background:' + NL_O + ';border-radius:2px"></div><div style="font-size:' + f(14) + ';font-weight:800;color:' + NL_T + '">' + t + '</div></div>';
+  const tile = (label, val, sub) => '<div style="flex:1;border:1px solid #E1E5E3;border-top:3px solid ' + NL_T + ';border-radius:6px;padding:' + f(7) + ' ' + f(10) + ';background:#FAFBFA"><div style="font-size:' + f(9) + ';color:#666;text-transform:uppercase;letter-spacing:.05em;font-weight:700">' + label + '</div><div style="font-size:' + f(22) + ';font-weight:800;color:' + NL_T + ';line-height:1.15;margin:2px 0">' + val + '</div><div style="font-size:' + f(10) + '">' + sub + '</div></div>';
+  const row = (cols, cells) => '<div style="display:grid;grid-template-columns:' + cols + ';padding:' + f(3.5) + ' 6px;border-bottom:1px solid #EEF0EF;font-size:' + f(10.5) + '">' + cells.join('') + '</div>';
+  const hd = (cols, labels) => '<div style="display:grid;grid-template-columns:' + cols + ';background:' + NL_T + ';color:#fff;font-size:' + f(9) + ';font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:' + f(4) + ' 6px;border-radius:3px 3px 0 0">' + labels.map((l, i) => '<div' + (i ? ' style="text-align:right"' : '') + '>' + l + '</div>').join('') + '</div>';
   const R = v => '<div style="text-align:right">' + v + '</div>';
-  let h = '<div style="background:' + NL_T + ';border-radius:8px;padding:14px 20px;color:#fff;display:flex;justify-content:space-between;align-items:flex-end;position:relative;overflow:hidden"><div style="position:absolute;right:-24px;top:-40px;width:120px;height:120px;border-radius:50%;background:' + NL_O + ';opacity:.22"></div><div><div style="font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:' + NL_O + ';font-weight:700">Adamsbridge</div><div style="font-size:28px;font-weight:800;line-height:1.1;margin-top:2px">HR Newsletter</div></div><div style="text-align:right"><div style="font-size:18px;color:#F7C98B;font-weight:700">' + nlEsc(mname) + '</div><div style="font-size:10px;color:#C7D3D1;margin-top:2px">People, hiring and culture at a glance</div></div></div>';
-  h += '<div style="display:flex;gap:8px;margin-top:10px">' + tile('Headcount, month end', nlNum(c.chc), nlDelta(c.chc, p && p.chc, true, pl)) + tile('Joined', nlNum(c.joins), nlDelta(c.joins, p && p.joins, true, pl)) + tile('Left', nlNum(c.exits), nlDelta(c.exits, p && p.exits, false, pl)) + tile('Monthly attrition', c.monthly_pct.toFixed(2) + '%', p ? nlDelta(c.monthly_pct, p.monthly_pct, false, pl).replace(/(\d[\d,]*)<\/span>/, '$1 pts</span>') : '') + '</div>';
-  // left column: the organisation's numbers
-  const dh = p ? c.chc - p.chc : 0;
-  let L = sec('Headcount and hiring') + '<div style="font-size:11px;line-height:1.55">Headcount closed ' + M.monthName + ' at <strong>' + nlNum(c.chc) + '</strong>' + (p ? (dh === 0 ? ', unchanged from ' + pl : ', ' + (dh > 0 ? 'up ' : 'down ') + nlNum(Math.abs(dh)) + ' from ' + pl) : '') + '. <strong>' + nlNum(c.joins) + '</strong> people joined' + (p ? ', ' + nlCmpWord(c.joins, p.joins) + ' the ' + nlNum(p.joins) + ' in ' + pl : '') + '.</div>';
-  const tl = M.trend.map(r => r.month.split(' ')[0]);
-  if (M.trend.length > 1 && K.ch) L += '<div style="border:1px solid #E1E5E3;border-radius:6px;padding:5px 6px 0;margin-top:7px"><div style="font-size:10px;font-weight:700;color:' + NL_T + '">Headcount, last ' + M.trend.length + ' months</div>' + nlLineSvg(tl, M.trend.map(r => r.chc), CW - 14, K.ch) + '</div>';
-  if (M.trend.length > 1 && K.bars) L += '<div style="border:1px solid #E1E5E3;border-radius:6px;padding:5px 6px 0;margin-top:7px"><div style="font-size:10px;font-weight:700;color:' + NL_T + '">Joined <span style="display:inline-block;width:8px;height:8px;background:' + NL_T + '"></span> and left <span style="display:inline-block;width:8px;height:8px;background:' + NL_O + '"></span>, last ' + M.trend.length + ' months</div>' + nlBarsSvg(tl, M.trend.map(r => r.joins), M.trend.map(r => r.exits), CW - 14, 128) + '</div>';
-  const nd = K.nd;
-  if (M.depts.length) { const col = '1fr 48px 48px 48px'; L += '<div style="margin-top:8px">' + hd(col, ['Movement by department', 'Joined', 'Left', 'Net']) + M.depts.slice(0, nd).map(d => { const net = d.j - d.x; return row(col, ['<div>' + nlEsc(d.dept) + '</div>', R(d.j), R(d.x), '<div style="text-align:right;font-weight:700;color:' + (net > 0 ? '#107C10' : net < 0 ? '#D13438' : '#73847B') + '">' + (net > 0 ? '+' : '') + net + '</div>']); }).join('') + '</div>'; }
-  L += '<div style="height:12px"></div>' + sec('Attrition') + '<div style="font-size:11px;line-height:1.55"><strong>' + nlNum(c.exits) + '</strong> people left in ' + nlEsc(M.monthName) + ' (' + c.vol + ' voluntary, ' + c.invol + ' involuntary)' + (p ? ', ' + nlCmpWord(c.exits, p.exits) + ' the ' + nlNum(p.exits) + ' in ' + pl : '') + '. Voluntary attrition, annualised for the year so far, is <strong>' + c.vol_ann_pct.toFixed(1) + '%</strong> against the ' + DM_TARGET + '% annual target.</div>';
-  { const col = '1fr 62px 62px'; const rowsA = [['Voluntary exits', nlNum(c.vol), p ? nlNum(p.vol) : ''], ['Monthly attrition', c.monthly_pct.toFixed(2) + '%', p ? p.monthly_pct.toFixed(2) + '%' : ''], ['Year to date, annualised (voluntary)', c.vol_ann_pct.toFixed(1) + '%', p ? p.vol_ann_pct.toFixed(1) + '%' : '']];
-    L += '<div style="margin-top:7px">' + hd(col, ['Measure', nlEsc(M.monthName.slice(0, 3)), nlEsc(pl || '')]) + rowsA.map(r => row(col, ['<div>' + r[0] + '</div>', '<div style="text-align:right;font-weight:700">' + r[1] + '</div>', '<div style="text-align:right;color:#666">' + r[2] + '</div>'])).join('') + '</div>'; }
-  const nr = K.nr;
-  if (M.reasons.length) { const rs = M.reasons.slice(0, nr), mx = Math.max.apply(null, rs.map(r => r.count)); L += '<div style="font-size:10.5px;font-weight:700;color:' + NL_T + ';margin:8px 0 4px">Reasons for leaving</div>' + rs.map(r => '<div style="display:flex;align-items:center;gap:6px;font-size:10px;margin-bottom:3px"><div style="width:150px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;line-height:1.5">' + nlEsc(r.reason) + '</div><div style="flex:1;background:#F0F2F1;border-radius:3px;height:10px"><div style="width:' + Math.round(r.count / mx * 100) + '%;height:10px;background:' + NL_O + ';border-radius:3px"></div></div><div style="width:20px;text-align:right;font-weight:700">' + r.count + '</div></div>').join(''); }
-  // right column: people and culture
-  let Rt = '';
-  const pick = []; { const pools = D.events.map(e => (e.photos || []).slice()); let more = true; while (more) { more = false; pools.forEach(q => { if (q.length) { pick.push(q.shift()); more = true; } }); } D.leftover.forEach(x => pick.push(x)); }
-  const np = Math.min(pick.length, K.np);
-  if (D.events.length || np) {
-    Rt += sec('Engagement and culture');
-    if (np) { const k = np >= 6 ? 6 : np >= 3 ? 3 : np, G = 6, per = k === 6 ? 3 : k, w = (CW - (per - 1) * G) / per, ph = k <= 2 ? 130 : K.ph; Rt += '<div style="display:flex;flex-wrap:wrap;gap:' + G + 'px;margin-bottom:7px">' + pick.slice(0, k).map(x => nlBg(x, 'width:' + w + 'px;height:' + ph + 'px;border-radius:5px')).join('') + '</div>'; }
-    const ne = K.ne, evs = D.events.slice(0, ne);
-    Rt += evs.map((ev, i) => { const meta = [ev.dateObj ? ev.dateObj.getUTCDate() + ' ' + NL_MON[ev.dateObj.getUTCMonth()] : '', ev.loc, ev.n ? nlNum(ev.n) + ' participants' : ''].filter(Boolean).join(' · '); return '<div style="border-left:3px solid ' + NL_O + ';padding-left:8px;margin-bottom:5px"><div style="font-size:11px"><strong style="color:' + NL_T + '">' + nlEsc(ev.name) + '</strong>' + (meta ? ' <span style="color:#666;font-size:10px">· ' + nlEsc(meta) + '</span>' : '') + '</div>' + (ev.sum && K.sum ? '<div style="font-size:10px;line-height:1.45;color:#333">' + nlEsc(opClip(ev.sum, K.sum)) + '</div>' : '') + '</div>'; }).join('');
-    if (D.events.length > ne) Rt += '<div style="font-size:10px;color:#666;margin-bottom:4px">and ' + (D.events.length - ne) + ' more ' + (D.events.length - ne === 1 ? 'activity' : 'activities') + ' during the month</div>';
-    Rt += '<div style="height:8px"></div>';
-  }
+  const box = (title, inner) => '<div style="border:1px solid #E1E5E3;border-radius:6px;padding:5px 6px 0;margin-top:' + f(7) + '"><div style="font-size:' + f(10) + ';font-weight:700;color:' + NL_T + '">' + title + '</div>' + inner + '</div>';
+  const top = '<div style="background:' + NL_T + ';border-radius:8px;padding:' + f(14) + ' ' + f(20) + ';color:#fff;display:flex;justify-content:space-between;align-items:flex-end;position:relative;overflow:hidden"><div style="position:absolute;right:-24px;top:-40px;width:120px;height:120px;border-radius:50%;background:' + NL_O + ';opacity:.22"></div><div><div style="font-size:' + f(10) + ';letter-spacing:.2em;text-transform:uppercase;color:' + NL_O + ';font-weight:700">Adamsbridge</div><div style="font-size:' + f(28) + ';font-weight:800;line-height:1.1;margin-top:2px">HR Newsletter</div></div><div style="text-align:right"><div style="font-size:' + f(18) + ';color:#F7C98B;font-weight:700">' + nlEsc(mname) + '</div><div style="font-size:' + f(10) + ';color:#C7D3D1;margin-top:2px">People, hiring and culture at a glance</div></div></div>' +
+    '<div style="display:flex;gap:8px;margin-top:' + f(10) + '">' + tile('Headcount, month end', nlNum(c.chc), nlDelta(c.chc, p && p.chc, true, pl)) + tile('Joined', nlNum(c.joins), nlDelta(c.joins, p && p.joins, true, pl)) + tile('Left', nlNum(c.exits), nlDelta(c.exits, p && p.exits, false, pl)) + tile('Monthly attrition', c.monthly_pct.toFixed(2) + '%', p ? nlDelta(c.monthly_pct, p.monthly_pct, false, pl).replace(/(\d[\d,]*)<\/span>/, '$1 pts</span>') : '') + '</div>';
+  const secs = [];
+  // headcount and hiring
+  { const tl = M.trend.map(r => r.month.split(' ')[0]), hasT = M.trend.length > 1, dh = p ? c.chc - p.chc : 0;
+    const V = hasT ? [{ line: 1, bars: 1 }, { line: 1, bars: 0 }, { line: 0, bars: 0 }] : [{ line: 0, bars: 0 }];
+    secs.push({ id: 'hc', n: V.length, emax: v => hasT ? (V[v].line ? 140 : 0) + (V[v].bars ? 100 : 0) : 0, html: (v, ex) => {
+      const k = V[v], exL = k.bars ? ex * 0.6 : ex, exB = ex - exL;
+      let h = sec('Headcount and hiring') + '<div style="font-size:' + f(11) + ';line-height:1.55">Headcount closed ' + M.monthName + ' at <strong>' + nlNum(c.chc) + '</strong>' + (p ? (dh === 0 ? ', unchanged from ' + pl : ', ' + (dh > 0 ? 'up ' : 'down ') + nlNum(Math.abs(dh)) + ' from ' + pl) : '') + '. <strong>' + nlNum(c.joins) + '</strong> people joined' + (p ? ', ' + nlCmpWord(c.joins, p.joins) + ' the ' + nlNum(p.joins) + ' in ' + pl : '') + '.</div>';
+      if (hasT && k.line) h += box('Headcount, last ' + M.trend.length + ' months', nlLineSvg(tl, M.trend.map(r => r.chc), CW - 14, Math.round(104 + exL)));
+      if (hasT && k.bars) h += box('Joined <span style="display:inline-block;width:8px;height:8px;background:' + NL_T + '"></span> and left <span style="display:inline-block;width:8px;height:8px;background:' + NL_O + '"></span>, last ' + M.trend.length + ' months', nlBarsSvg(tl, M.trend.map(r => r.joins), M.trend.map(r => r.exits), CW - 14, Math.round(110 + exB)));
+      return h; } });
+    // movement by department is its own block, so it can sit in whichever column balances the page
+    const ND = [8, 6, 4, 3].filter((n, i, arr) => !i || arr[i - 1] < M.depts.length || n < M.depts.length);
+    if (M.depts.length) secs.push({ id: 'mov', n: ND.length, emax: () => 0, html: v => { let h = ''; const k = { nd: ND[v] };
+      { const col = '1fr 48px 48px 48px'; h += '<div>' + hd(col, ['Movement by department', 'Joined', 'Left', 'Net']) + M.depts.slice(0, k.nd).map(d => { const net = d.j - d.x; return row(col, ['<div>' + nlEsc(d.dept) + '</div>', R(d.j), R(d.x), '<div style="text-align:right;font-weight:700;color:' + (net > 0 ? '#107C10' : net < 0 ? '#D13438' : '#73847B') + '">' + (net > 0 ? '+' : '') + net + '</div>']); }).join('') + '</div>'; }
+      return h; } }); }
+  // attrition
+  { const V = [6, 4, 3];
+    secs.push({ id: 'att', n: M.reasons.length > 3 ? V.length : 1, emax: () => 0, html: v => {
+      let h = sec('Attrition') + '<div style="font-size:' + f(11) + ';line-height:1.55"><strong>' + nlNum(c.exits) + '</strong> people left in ' + nlEsc(M.monthName) + ' (' + c.vol + ' voluntary, ' + c.invol + ' involuntary)' + (p ? ', ' + nlCmpWord(c.exits, p.exits) + ' the ' + nlNum(p.exits) + ' in ' + pl : '') + '. Voluntary attrition, annualised for the year so far, is <strong>' + c.vol_ann_pct.toFixed(1) + '%</strong> against the ' + DM_TARGET + '% annual target.</div>';
+      const col = '1fr 62px 62px', rowsA = [['Voluntary exits', nlNum(c.vol), p ? nlNum(p.vol) : ''], ['Monthly attrition', c.monthly_pct.toFixed(2) + '%', p ? p.monthly_pct.toFixed(2) + '%' : ''], ['Year to date, annualised (voluntary)', c.vol_ann_pct.toFixed(1) + '%', p ? p.vol_ann_pct.toFixed(1) + '%' : '']];
+      h += '<div style="margin-top:' + f(7) + '">' + hd(col, ['Measure', nlEsc(M.monthName.slice(0, 3)), nlEsc(pl || '')]) + rowsA.map(r => row(col, ['<div>' + r[0] + '</div>', '<div style="text-align:right;font-weight:700">' + r[1] + '</div>', '<div style="text-align:right;color:#666">' + r[2] + '</div>'])).join('') + '</div>';
+      if (M.reasons.length) { const rs = M.reasons.slice(0, V[v]), mx = Math.max.apply(null, rs.map(r => r.count)); h += '<div style="font-size:' + f(10.5) + ';font-weight:700;color:' + NL_T + ';margin:' + f(8) + ' 0 ' + f(4) + '">Reasons for leaving</div>' + rs.map(r => '<div style="display:flex;align-items:center;gap:6px;font-size:' + f(10) + ';margin-bottom:' + f(3) + '"><div style="width:44%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;line-height:1.5">' + nlEsc(r.reason) + '</div><div style="flex:1;background:#F0F2F1;border-radius:3px;height:' + f(10) + '"><div style="width:' + Math.round(r.count / mx * 100) + '%;height:' + f(10) + ';background:' + NL_O + ';border-radius:3px"></div></div><div style="width:20px;text-align:right;font-weight:700">' + r.count + '</div></div>').join(''); }
+      return h; } }); }
+  // engagement and culture
+  { const pick = []; const pools = D.events.map(e => (e.photos || []).slice()); let more = true; while (more) { more = false; pools.forEach(q => { if (q.length) { pick.push(q.shift()); more = true; } }); } D.leftover.forEach(x => pick.push(x));
+    if (D.events.length || pick.length) {
+      const maxRows = pick.length >= 3 ? Math.min(3, Math.floor(pick.length / 3)) : (pick.length ? 1 : 0), per = pick.length >= 3 ? 3 : Math.max(1, pick.length);
+      let V = [{ rows: 3, ne: 6, sum: 200 }, { rows: 2, ne: 6, sum: 200 }, { rows: 2, ne: 6, sum: 120 }, { rows: 2, ne: 8, sum: 0 }, { rows: 1, ne: 6, sum: 0 }, { rows: 1, ne: 4, sum: 0 }].map(k => Object.assign({}, k, { rows: Math.min(k.rows, maxRows) }));
+      V = V.filter((k, i) => !i || JSON.stringify(k) !== JSON.stringify(V[i - 1]));
+      const baseH = per < 3 ? 120 : 84, G = 6, w = (CW - (per - 1) * G) / per;
+      secs.push({ id: 'eng', n: V.length, emax: v => V[v].rows * 80, html: (v, ex) => {
+        const k = V[v], ph = Math.round(baseH + (k.rows ? ex / k.rows : 0)), cnt = k.rows * per;
+        let h = sec('Engagement and culture');
+        if (cnt) h += '<div style="display:flex;flex-wrap:wrap;gap:' + G + 'px;margin-bottom:' + f(7) + '">' + pick.slice(0, cnt).map(x => bare ? '<div style="width:' + w + 'px;height:' + ph + 'px"></div>' : nlBg(x, 'width:' + w + 'px;height:' + ph + 'px;border-radius:5px')).join('') + '</div>';
+        h += D.events.slice(0, k.ne).map(ev => { const meta = [ev.dateObj ? ev.dateObj.getUTCDate() + ' ' + NL_MON[ev.dateObj.getUTCMonth()] : '', ev.loc, ev.n ? nlNum(ev.n) + ' participants' : ''].filter(Boolean).join(' · '); return '<div style="border-left:3px solid ' + NL_O + ';padding-left:8px;margin-bottom:' + f(5) + '"><div style="font-size:' + f(11) + '"><strong style="color:' + NL_T + '">' + nlEsc(ev.name) + '</strong>' + (meta ? ' <span style="color:#666;font-size:' + f(10) + '">· ' + nlEsc(meta) + '</span>' : '') + '</div>' + (ev.sum && k.sum ? '<div style="font-size:' + f(10) + ';line-height:1.45;color:#333">' + nlEsc(opClip(ev.sum, k.sum)) + '</div>' : '') + '</div>'; }).join('');
+        if (D.events.length > k.ne) h += '<div style="font-size:' + f(10) + ';color:#666">and ' + (D.events.length - k.ne) + ' more ' + (D.events.length - k.ne === 1 ? 'activity' : 'activities') + ' during the month</div>';
+        return h; } });
+    } }
+  // rewards and recognition: every name is always printed; the tighter version groups names under each award
   if (T.rr.length) {
     const g = {}, order = []; T.rr.forEach(r => { const k = String(r.award || 'Recognition').trim(); if (!g[k]) { g[k] = []; order.push(k); } g[k].push(r); });
-    Rt += sec('Rewards &amp; Recognition') + (K.rr ? T.rr.map(r => '<div style="font-size:10.5px;line-height:1.5;margin-bottom:5px"><strong style="color:' + NL_T + '">' + nlEsc(String(r.award || 'Recognition').trim()) + ':</strong> <strong>' + nlEsc(r.name) + '</strong>' + ([r.desig, r.dept].filter(Boolean).length ? ' <span style="color:#666">(' + nlEsc([r.desig, r.dept].filter(Boolean).join(', ')) + ')</span>' : '') + (r.reason ? '<div style="font-size:10px;color:#333;line-height:1.45">' + nlEsc(opClip(r.reason, K.rr)) + '</div>' : '') + '</div>').join('') : order.map(k => '<div style="font-size:10.5px;line-height:1.5;margin-bottom:4px"><strong style="color:' + NL_T + '">' + nlEsc(k) + ':</strong> ' + g[k].map(r => nlEsc(r.name) + (r.dept ? ' <span style="color:#666">(' + nlEsc(r.dept) + ')</span>' : '')).join(', ') + '</div>').join('')) + '<div style="height:8px"></div>';
+    secs.push({ id: 'rr', n: 2, emax: () => 0, html: v => sec('Rewards &amp; Recognition') + (v === 0 ? T.rr.map(r => '<div style="font-size:' + f(10.5) + ';line-height:1.5;margin-bottom:' + f(5) + '"><strong style="color:' + NL_T + '">' + nlEsc(String(r.award || 'Recognition').trim()) + ':</strong> <strong>' + nlEsc(r.name) + '</strong>' + ([r.desig, r.dept].filter(Boolean).length ? ' <span style="color:#666">(' + nlEsc([r.desig, r.dept].filter(Boolean).join(', ')) + ')</span>' : '') + (r.reason ? '<div style="font-size:' + f(10) + ';color:#333;line-height:1.45">' + nlEsc(opClip(r.reason, 110)) + '</div>' : '') + '</div>').join('') : order.map(k => '<div style="font-size:' + f(10.5) + ';line-height:1.5;margin-bottom:' + f(4) + '"><strong style="color:' + NL_T + '">' + nlEsc(k) + ':</strong> ' + g[k].map(r => nlEsc(r.name) + (r.dept ? ' <span style="color:#666">(' + nlEsc(r.dept) + ')</span>' : '')).join(', ') + '</div>').join('')) });
   }
+  // other updates
   if (T.other.length) {
-    const no = K.no, cl = K.oc;
-    Rt += sec('Other updates') + T.other.slice(0, no).map(o => '<div style="font-size:10.5px;line-height:1.5;margin-bottom:4px"><strong style="color:' + NL_T + '">' + nlEsc(o.head) + '</strong>' + (o.detail ? ' — ' + nlEsc(opClip(o.detail, cl)) : '') + '</div>').join('');
+    const V = [{ no: 5, oc: 260 }, { no: 4, oc: 150 }, { no: 3, oc: 110 }, { no: 3, oc: 70 }];
+    secs.push({ id: 'oth', n: V.length, emax: () => 0, html: v => sec('Other updates') + T.other.slice(0, V[v].no).map(o => '<div style="font-size:' + f(10.5) + ';line-height:1.5;margin-bottom:' + f(4) + '"><strong style="color:' + NL_T + '">' + nlEsc(o.head) + '</strong>' + (o.detail ? ' — ' + nlEsc(opClip(o.detail, V[v].oc)) : '') + '</div>').join('') });
   }
-  h += '<div style="display:grid;grid-template-columns:' + CW + 'px ' + CW + 'px;gap:18px;margin-top:14px"><div>' + L + '</div><div>' + (Rt || '') + '</div></div>';
-  return h;
+  return { top, secs };
+}
+function nlFitCol(col, H, gap) {
+  const vi = col.map(() => 0), ht = () => col.reduce((a, s2, i) => a + s2.h[vi[i]], 0) + gap * (col.length - 1);
+  let h = ht(), guard = 0;
+  while (h > H && guard++ < 40) {
+    const opts = col.map((s2, i) => vi[i] + 1 < s2.n ? { i, cut: s2.h[vi[i]] - s2.h[vi[i] + 1] } : null).filter(Boolean); if (!opts.length) break;
+    const enough = opts.filter(o => h - o.cut <= H).sort((a, b) => a.cut - b.cut)[0], pickO = enough || opts.sort((a, b) => b.cut - a.cut)[0];
+    vi[pickO.i]++; h = ht();
+  }
+  const e = col.reduce((a, s2, i) => a + s2.emax(vi[i]), 0), slack = Math.max(0, H - h);
+  return { vi, h, e, slack, over: Math.max(0, h - H), unfill: Math.max(0, slack - e - 22 * Math.max(0, col.length - 1)), deg: vi.reduce((a, b) => a + b, 0) };
+}
+function nlOneSolve(D, z, W, CW, avail) {
+  const P = nlOneParts(D, z, CW, true), gap = Math.round(15 * z), topH = opMeasure(P.top, W), H = avail - topH - gap - 3;
+  P.secs.forEach(s2 => { s2.h = []; for (let v = 0; v < s2.n; v++) s2.h.push(opMeasure(s2.html(v, 0), CW)); });
+  let best = null;
+  for (let k = 1; k < P.secs.length; k++) {
+    const res = [nlFitCol(P.secs.slice(0, k), H, gap), nlFitCol(P.secs.slice(k), H, gap)];
+    const over = res[0].over + res[1].over, deg = res[0].deg + res[1].deg, unfill = res[0].unfill + res[1].unfill;
+    const natural = P.secs.findIndex(x => x.id === 'att') + 1; const score = unfill + over * 50 + deg * 30 + (k === natural ? 0 : 1);
+    if (!best || score < best.score) best = { k, res, over, deg, unfill, score, z, gap, H };
+  }
+  return best;
+}
+function nlOneInner(D, W, avail) {
+  const CW = (W - 18) / 2;
+  const base = nlOneSolve(D, 1, W, CW, avail); let pickS = base;
+  // a light month: set the type larger, as long as nothing has to be cut to do it
+  [1.06, 1.12, 1.18, 1.25, 1.32, 1.4].forEach(z => { if (pickS.unfill <= 0) return; const c2 = nlOneSolve(D, z, W, CW, avail); if (c2.over <= 0 && c2.deg <= base.deg && c2.unfill < pickS.unfill) pickS = c2; });
+  const S = pickS, P = nlOneParts(D, S.z, CW, false), cols = [P.secs.slice(0, S.k), P.secs.slice(S.k)];
+  const colHtml = cols.map((col, ci) => {
+    const r = S.res[ci], used = Math.min(r.slack, r.e), rest = r.slack - used, extraGap = col.length > 1 ? Math.min(22, rest / (col.length - 1)) : 0;
+    return '<div>' + col.map((s2, i) => { const share = r.e ? used * s2.emax(r.vi[i]) / r.e : 0; return '<div style="margin-top:' + (i ? Math.floor(S.gap + extraGap) : 0) + 'px">' + s2.html(r.vi[i], Math.floor(share)) + '</div>'; }).join('') + '</div>';
+  });
+  return P.top + '<div style="display:grid;grid-template-columns:' + CW + 'px ' + CW + 'px;gap:18px;margin-top:' + S.gap + 'px">' + colHtml.join('') + '</div>';
 }
 function nlOnePage(D, total) {
-  const W = 726, avail = NL_PH - 10 - 22 - 40; let inner = '';
-  const lastL = NL_KL.length - 1, lastR = NL_KR.length - 1; let l = 0, r = 0;
-  while (l < lastL && opMeasure(nlOneInner(D, l, lastR), W) > avail) l++;
-  while (r < lastR && opMeasure(nlOneInner(D, lastL, r), W) > avail) r++;
-  inner = nlOneInner(D, l, r);
+  const W = 726, avail = NL_PH - 10 - 22 - 40;
+  const inner = nlOneInner(D, W, avail);
   const ttl = D.metrics.monthName + ' ' + D.metrics.y;
   return '<div class="nl-page" style="width:' + NL_PW + 'px;height:' + NL_PH + 'px;background:#fff;position:relative;overflow:hidden;font-family:' + OP_FONT + ';color:#222;box-sizing:border-box"><div style="height:10px;background:' + NL_O + '"></div><div style="padding:22px 34px 0">' + opFit(inner, W, avail) + '</div>' +
     '<div style="position:absolute;left:34px;right:34px;bottom:12px;border-top:1px solid #E1E5E3;padding-top:6px;font-size:9.5px;color:#999;display:flex;justify-content:space-between"><span>Adamsbridge HR Newsletter &middot; ' + nlEsc(ttl) + ' &middot; Confidential, for internal use &middot; Interns are not counted in headcount</span><span>' + (total > 1 ? 'Page 1 of ' + total : '') + '</span></div></div>';
@@ -5527,20 +5579,22 @@ function repRenderTaw() {
   const reqs = dept ? TA_OPEN_REQS.filter(r => r.department === dept) : TA_OPEN_REQS;
   const cur = tawCount(cands, reqs, w), prev = tawCount(cands, reqs, pw);
   TAW_FILE = 'Adamsbridge_Weekly_TA_Report_week_ending_' + w.e.getUTCDate() + TAW_MON[w.e.getUTCMonth()] + w.e.getUTCFullYear() + '_' + (dept || 'Overall').replace(/\s+/g, '_') + '.pdf';
-  const sec = t => '<div style="display:flex;align-items:center;gap:8px;margin:14px 0 6px"><div style="width:5px;height:15px;background:' + O + ';border-radius:2px"></div><div style="font-size:13px;font-weight:800;color:' + T + '">' + t + '</div></div>';
-  const lab = t => '<div style="font-size:9px;font-weight:700;color:#73847B;text-transform:uppercase;letter-spacing:.06em;margin:10px 0 5px">' + t + '</div>';
-  const tile = (l, v, sub, big) => '<div style="flex:1;border:1px solid #E1E5E3;border-top:3px solid ' + (big ? T : '#73847B') + ';border-radius:6px;padding:6px 10px;background:#FAFBFA"><div style="font-size:8.5px;color:#666;text-transform:uppercase;letter-spacing:.05em;font-weight:700">' + l + '</div><div style="font-size:' + (big ? 24 : 18) + 'px;font-weight:800;color:' + T + ';line-height:1.15;margin:1px 0">' + v + '</div><div style="font-size:9.5px;color:#555">' + sub + '</div></div>';
-  const tbl = (hd, rows, widths, boldLast) => '<table style="width:100%;border-collapse:collapse;font-size:10.5px;table-layout:fixed"><thead><tr>' + hd.map((x, i) => '<th style="text-align:' + (i ? 'right' : 'left') + ';padding:4px 6px;background:' + T + ';color:#fff;font-weight:700;font-size:9.5px;' + (widths && widths[i] ? 'width:' + widths[i] : '') + '">' + x + '</th>').join('') + '</tr></thead><tbody>' + rows.map((r, k) => '<tr style="background:' + (k % 2 ? '#F7F8F8' : '#fff') + (boldLast && k === rows.length - 1 ? ';font-weight:700' : '') + '">' + r.map((x, i) => '<td style="text-align:' + (i ? 'right' : 'left') + ';padding:3.5px 6px;border-bottom:1px solid #EEF0EF;' + (i ? 'white-space:nowrap' : 'overflow-wrap:anywhere') + '">' + x + '</td>').join('') + '</tr>').join('') + '</tbody></table>';
+  let vz = 1; const vp = n => (Math.round(n * vz * 10) / 10) + 'px'; // rows and spacing open up when the page has room
+  const sec = t => '<div style="display:flex;align-items:center;gap:8px;margin:' + vp(14) + ' 0 ' + vp(6) + '"><div style="width:5px;height:15px;background:' + O + ';border-radius:2px"></div><div style="font-size:13px;font-weight:800;color:' + T + '">' + t + '</div></div>';
+  const lab = t => '<div style="font-size:9px;font-weight:700;color:#73847B;text-transform:uppercase;letter-spacing:.06em;margin:' + vp(10) + ' 0 ' + vp(5) + '">' + t + '</div>';
+  const tile = (l, v, sub, big) => '<div style="flex:1;border:1px solid #E1E5E3;border-top:3px solid ' + (big ? T : '#73847B') + ';border-radius:6px;padding:' + vp(6) + ' 10px;background:#FAFBFA"><div style="font-size:8.5px;color:#666;text-transform:uppercase;letter-spacing:.05em;font-weight:700">' + l + '</div><div style="font-size:' + (big ? 24 : 18) + 'px;font-weight:800;color:' + T + ';line-height:1.15;margin:1px 0">' + v + '</div><div style="font-size:9.5px;color:#555">' + sub + '</div></div>';
+  const tbl = (hd, rows, widths, boldLast) => '<table style="width:100%;border-collapse:collapse;font-size:10.5px;table-layout:fixed"><thead><tr>' + hd.map((x, i) => '<th style="text-align:' + (i ? 'right' : 'left') + ';padding:' + vp(4) + ' 6px;background:' + T + ';color:#fff;font-weight:700;font-size:9.5px;' + (widths && widths[i] ? 'width:' + widths[i] : '') + '">' + x + '</th>').join('') + '</tr></thead><tbody>' + rows.map((r, k) => '<tr style="background:' + (k % 2 ? '#F7F8F8' : '#fff') + (boldLast && k === rows.length - 1 ? ';font-weight:700' : '') + '">' + r.map((x, i) => '<td style="text-align:' + (i ? 'right' : 'left') + ';padding:' + vp(3.5) + ' 6px;border-bottom:1px solid #EEF0EF;' + (i ? 'white-space:nowrap' : 'overflow-wrap:anywhere') + '">' + x + '</td>').join('') + '</tr>').join('') + '</tbody></table>';
   const two = (a, b) => '<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px"><div>' + a + '</div><div>' + b + '</div></div>';
   const lw = k => 'week before: ' + prev[k];
   const demand = reqs.reduce((a, r) => a + r.target, 0), open = reqs.reduce((a, r) => a + r.openPosition, 0), inOffer = reqs.reduce((a, r) => a + r.loiAccept + r.loiPending + r.docPending, 0), filled = Math.max(0, demand - open - inOffer);
-  let h = head + lab('In the week') + '<div style="display:flex;gap:8px">' + tile('Positions raised', cur.raised, lw('raised'), 1) + tile('Candidates sourced', cur.sourced, lw('sourced'), 1) + tile('Offers released', cur.offered, lw('offered'), 1) + tile('Joined', cur.joined, lw('joined'), 1) + '</div>' +
+  const compose = () => {
+  let h = head + lab('In the week') + '<div style="display:flex;gap:8px">' + tile('Positions raised', cur.raised, lw('raised'), 1) + tile('Candidates sourced', cur.sourced, lw('sourced'), 1) + tile('Offers released', cur.offered, lw('offered'), 1) + tile('Offers accepted', cur.accepted, lw('accepted'), 1) + tile('Joined', cur.joined, lw('joined'), 1) + '</div>' +
     lab('As of today') + '<div style="display:flex;gap:8px">' + tile('Total hiring demand', demand, 'positions asked for') + tile('Open positions', open, demand ? Math.round(open / demand * 100) + '% of demand' : '&nbsp;') + tile('In offer or documentation', inOffer, 'accepted or in progress') + tile('Joined against demand', filled, demand ? Math.round(filled / demand * 100) + '% of demand' : '&nbsp;') + '</div>';
   const chg = (a, b) => { const d = a - b; return d === 0 ? 'no change' : (d > 0 ? '+' : '−') + Math.abs(d); };
   const stages = [['Positions raised', 'raised'], ['Candidates sourced', 'sourced'], ['Screened in, of those sourced', 'screened'], ['First-round interviews held', 'l1'], ['Offers released', 'offered'], ['Offers accepted', 'accepted'], ['Joined', 'joined']];
   const act = sec('Activity in the week') + tbl(['Stage', 'This week', 'Week before', 'Change'], stages.map(x => [x[0], cur[x[1]], prev[x[1]], chg(cur[x[1]], prev[x[1]])]), ['46%', '18%', '18%', '18%']);
   const trows = []; for (let k = 5; k >= 0; k--) { const tw = tawShift(w, -k), c = tawCount(cands, reqs, tw); trows.push([tawLabel(tw, true), c.raised, c.sourced, c.offered, c.accepted, c.joined]); }
-  const trend = sec('Last six weeks') + tbl(['Week', 'Raised', 'Sourced', 'Offers', 'Accepted', 'Joined'], trows, ['27%'], true) + '<div style="height:21px"></div>';
+  const trend = sec('Last six weeks') + tbl(['Week', 'Raised', 'Sourced', 'Offers', 'Accepted', 'Joined'], trows, ['27%'], true);
   h += two(act, trend);
   if (!dept) {
     const m = {}; const g = d => m[tawDeptName(d)] || (m[tawDeptName(d)] = { n: tawDeptName(d), demand: 0, open: 0, inOffer: 0, raised: 0, sourced: 0, offered: 0, joined: 0 });
@@ -5564,7 +5618,9 @@ function repRenderTaw() {
   { const nw = tawShift(w, 1); if (nw.e >= new Date()) { const dj = cands.filter(c => c.doj && c.doj >= nw.s && c.doj <= nw.e && !/joined|decline|renege|reject|drop|no show|noshow/i.test(c.candidateStatus || '')); const m = {}; dj.forEach(c => { const k = tawDeptName(c.department); m[k] = (m[k] || 0) + 1; });
       if (dj.length) lines.push('<strong style="color:' + T + '">Due to join in the following week (' + tawLabel(nw, true) + '):</strong> ' + dj.length + (dj.length === 1 ? ' person' : ' people') + ' — ' + Object.entries(m).sort((a, b) => b[1] - a[1]).map(x => esc(x[0]) + ' ' + x[1]).join(', ') + '.'); } }
   try { const sm = taGroupByNormalized(cur.cohort, c => c.source).filter(x => x.displayLabel && !/not recorded/i.test(x.displayLabel)).slice(0, 6); if (sm.length) lines.push('<strong style="color:' + T + '">Where this week\'s candidates came from:</strong> ' + sm.map(x => esc(x.displayLabel) + ' ' + x.count + ' (' + Math.round(x.count / cur.sourced * 100) + '%)').join(', ') + '.'); } catch (e) { console.error('weekly TA source failed', e); }
-  if (lines.length) h += '<div style="margin-top:14px;border:1px solid #E1E5E3;border-left:4px solid ' + O + ';border-radius:6px;padding:8px 12px;font-size:10.5px;line-height:1.6">' + lines.map(x => '<div>' + x + '</div>').join('') + '</div>';
+  if (lines.length) h += '<div style="margin-top:' + vp(14) + ';border:1px solid #E1E5E3;border-left:4px solid ' + O + ';border-radius:6px;padding:' + vp(8) + ' 12px;font-size:10.5px;line-height:1.6">' + lines.map(x => '<div>' + x + '</div>').join('') + '</div>';
+  return h; };
+  let h = ''; for (const v of [2.2, 2, 1.8, 1.65, 1.5, 1.35, 1.2, 1.1, 1]) { vz = v; h = compose(); if (opMeasure(h, W) <= PH - 10 - 22 - 44 - 6) break; }
   show(h);
 }
 async function tawDownload() {
