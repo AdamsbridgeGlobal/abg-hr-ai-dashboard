@@ -1496,8 +1496,14 @@
 
     <div class="card">
       <div class="ctitle">Open Positions by Role</div>
-      <div class="note" style="margin:0 0 10px">Grouped by Skill Set — the closest real field to "role" in this data.</div>
+      <div class="note" style="margin:0 0 10px" id="ta-dp-role-note">Grouped by Skill Set.</div>
       <div class="chwrap"><canvas id="ta-dp-role-chart" role="img" aria-label="Bar chart of open positions by role"></canvas></div>
+    </div>
+
+    <div class="card" id="ta-dp-level-card" style="display:none">
+      <div class="ctitle">Open Positions by Level</div>
+      <div class="note" style="margin:0 0 10px">From the Level column of the Open Requirements sheet. Follows the filters above.</div>
+      <div class="chwrap"><canvas id="ta-dp-level-chart" role="img" aria-label="Bar chart of open positions by level"></canvas></div>
     </div>
 
     <div class="card">
@@ -1923,6 +1929,8 @@ async function loadTalentAcquisitionData(token) {
         openPosition: findCol(headers, ['Open Position']),
         comment: findCol(headers, ['Comment']),
         priority: findCol(headers, ['Priority']),
+        designation: findCol(headers, ['Designation', 'Role']),
+        level: findCol(headers, ['Level', 'Grade', 'Band']),
       };
       const numOrNull = v => {
         if (typeof v === 'number') return v;
@@ -1999,6 +2007,8 @@ async function loadTalentAcquisitionData(token) {
           openPosition: Math.max(0, numOr0(I.target>=0 ? r[I.target] : null) - numOr0(I.joined>=0 ? r[I.joined] : null) - numOr0(I.loiAccept>=0 ? r[I.loiAccept] : null) - numOr0(I.loiPending>=0 ? r[I.loiPending] : null) - numOr0(I.docPending>=0 ? r[I.docPending] : null)),
           comment: String(I.comment>=0 ? (r[I.comment]||'') : '').trim(),
           priority: taPrioLabel(I.priority>=0 ? r[I.priority] : ''),
+          designation: String(I.designation>=0 ? (r[I.designation]||'') : '').trim().replace(/\s+/g,' '),
+          level: String(I.level>=0 ? (r[I.level]||'') : '').trim().replace(/\s+/g,' '),
         }));
       console.log(`TA: loaded ${TA_OPEN_REQS.length} open requisitions from Open Requirements (${TA_OPEN_REQS.reduce((s,r)=>s+r.openPosition,0)} total open positions).`);
 
@@ -4525,8 +4535,14 @@ function taUpdateDPPeriodOptions() {
 
 // Open positions by role — grouped by Skill Set, the closest real field to
 // "role" that exists in Open Requirements.
+// Role of an open requirement: Designation and Level from the Open Requirements sheet when those columns are filled;
+// otherwise the Skill Set, which was the only role-like field before.
+function taRoleOf(r) { return [r.designation, r.level].filter(Boolean).join(' · '); }
+function taHasRole(reqs) { return (reqs || TA_OPEN_REQS).some(r => r.designation || r.level); }
+function taRoleText(r) { const role = taRoleOf(r); return role && r.skillSet ? role + ' (' + r.skillSet + ')' : (role || r.skillSet || ''); }
 function computeOpenByRole(openReqs) {
-  const groups = taGroupByNormalized(openReqs, r => r.skillSet || '(not recorded)');
+  const useRole = taHasRole(openReqs);
+  const groups = taGroupByNormalized(openReqs, r => (useRole ? taRoleOf(r) : r.skillSet) || 'Other');
   return groups.map(g => ({ role: g.displayLabel, openPosition: g.items.reduce((s,r)=>s+r.openPosition,0), reqCount: g.count }))
     .filter(r => r.openPosition > 0)
     .sort((a,b) => b.openPosition - a.openPosition);
@@ -4574,6 +4590,7 @@ function taReqSubtitle(r) {
   const parts = [];
   if (r.reqDate instanceof Date && !isNaN(r.reqDate)) parts.push('Raised ' + r.reqDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric', timeZone: 'UTC' }));
   if (r.posType && !/not recorded/i.test(r.posType)) parts.push(r.posType);
+  if (taRoleOf(r)) parts.push(taRoleOf(r));
   if (r.skillSet) parts.push(r.skillSet);
   return parts.length ? '<div style="font-size:.72rem;color:#73847B;font-weight:400;margin-top:2px">' + esc(parts.join(' · ')) + '</div>' : '';
 }
@@ -5666,8 +5683,8 @@ function repRenderTaw() {
     if (hasP) { const pr = computeOpenByPriority(reqs, cands); if (pr.length) prio = sec('Open positions by priority') + tbl(['Priority', 'Positions', 'Average days', 'Oldest'], pr.map(x => ['<strong style="color:' + (x.priority === 'Other' ? '#555' : taPrioColor(x.priority)) + '">' + esc(x.priority) + '</strong>', x.open, x.avgAge === null ? '-' : x.avgAge, x.oldest === null ? '-' : x.oldest]), ['40%', '20%', '22%', '18%']); }
     const old = reqs.filter(r => r.openPosition > 0 && r.ageing !== null).sort((a, b) => b.ageing - a.ageing).slice(0, hasP ? 7 : 6);
     if (old.length) oldest = sec('Positions open the longest') + (hasP
-      ? tbl(['Department and skill', 'Priority', 'Type', 'Still open', 'Days open'], old.map(r => [esc(tawDeptName(r.department) + (r.skillSet ? ' — ' + r.skillSet : '')), r.priority ? '<strong style="color:' + taPrioColor(r.priority) + '">' + esc(r.priority) + '</strong>' : '-', /not recorded/i.test(r.posType) ? '-' : esc(r.posType), r.openPosition, r.ageing]), ['46%', '15%', '15%', '12%', '12%'])
-      : tbl(['Department and skill', 'Type', 'Still open', 'Days open'], old.map(r => [esc(tawDeptName(r.department) + (r.skillSet ? ' — ' + r.skillSet : '')), /not recorded/i.test(r.posType) ? '-' : esc(r.posType), r.openPosition, r.ageing]), ['50%', '18%', '16%', '16%']));
+      ? tbl(['Department and role', 'Priority', 'Type', 'Still open', 'Days open'], old.map(r => [esc(tawDeptName(r.department) + (taRoleText(r) ? ' — ' + taRoleText(r) : '')), r.priority ? '<strong style="color:' + taPrioColor(r.priority) + '">' + esc(r.priority) + '</strong>' : '-', /not recorded/i.test(r.posType) ? '-' : esc(r.posType), r.openPosition, r.ageing]), ['46%', '15%', '15%', '12%', '12%'])
+      : tbl(['Department and role', 'Type', 'Still open', 'Days open'], old.map(r => [esc(tawDeptName(r.department) + (taRoleText(r) ? ' — ' + taRoleText(r) : '')), /not recorded/i.test(r.posType) ? '-' : esc(r.posType), r.openPosition, r.ageing]), ['50%', '18%', '16%', '16%']));
   } catch (e) { console.error('weekly TA ageing failed', e); }
   if (prio) { h += two(prio, ageing); if (oldest) h += oldest; }
   else if (ageing || oldest) h += two(ageing, oldest);
@@ -10012,6 +10029,12 @@ function renderTalentAcquisition() {
 
   const dpByRole = computeOpenByRole(dpOpenReqs);
   barChart('ta-dp-role-chart', dpByRole.slice(0,15).map(r=>r.role), dpByRole.slice(0,15).map(r=>r.openPosition), '#E69F50', true);
+  { const hr = taHasRole(); const nt = document.getElementById('ta-dp-role-note'); if (nt) nt.textContent = hr ? 'Grouped by Designation and Level from the Open Requirements sheet. Requirements without them are shown as Other.' : 'Grouped by Skill Set.';
+    const hasLvl = TA_OPEN_REQS.some(r => r.level), lc = document.getElementById('ta-dp-level-card');
+    if (lc) { lc.style.display = hasLvl ? '' : 'none';
+      if (hasLvl) { const m = {}; dpOpenReqs.forEach(r => { if (r.openPosition > 0) { const k = r.level || 'Other'; m[k] = (m[k] || 0) + r.openPosition; } });
+        const ks = Object.keys(m).sort((a, b) => (a === 'Other') - (b === 'Other') || a.localeCompare(b, undefined, { numeric: true }));
+        barChart('ta-dp-level-chart', ks, ks.map(k => m[k]), '#0D3133', true); } } }
 
   const dpAgeing = computeRequisitionAgeing(dpOpenReqs, TA_FINAL_SELECT);
   barChart('ta-dp-ageing-chart', Object.keys(dpAgeing.buckets), Object.values(dpAgeing.buckets), '#DA8A00');
@@ -10349,7 +10372,7 @@ function talBizPreview(dept, periodType, year, month, half) {
     }
     if (dept) {
       const op = reqs.filter(r => r.openPosition > 0).sort((a, b) => (a.priority ? taPrioRank(a.priority) : 9) - (b.priority ? taPrioRank(b.priority) : 9) || (b.ageing || 0) - (a.ageing || 0));
-      if (op.length) h += sec('Positions still open in ' + esc(dept)) + tbl(['Skill or role', 'Hiring manager'].concat(hasP ? ['Priority'] : []).concat(['Still open', 'Days open']), op.slice(0, 10).map(r => [esc(r.skillSet || '-'), esc(r.hiringManager || '-')].concat(hasP ? [r.priority ? '<strong style="color:' + taPrioColor(r.priority) + '">' + esc(r.priority) + '</strong>' : '-'] : []).concat([r.openPosition, r.ageing == null ? '-' : r.ageing])), hasP ? ['38%', '24%', '14%', '12%', '12%'] : ['44%', '32%', '12%', '12%']) + (op.length > 10 ? '<div style="font-size:10px;color:#666;margin-top:3px">and ' + (op.length - 10) + ' more</div>' : '');
+      if (op.length) h += sec('Positions still open in ' + esc(dept)) + tbl(['Role', 'Hiring manager'].concat(hasP ? ['Priority'] : []).concat(['Still open', 'Days open']), op.slice(0, 10).map(r => [esc(taRoleText(r) || '-'), esc(r.hiringManager || '-')].concat(hasP ? [r.priority ? '<strong style="color:' + taPrioColor(r.priority) + '">' + esc(r.priority) + '</strong>' : '-'] : []).concat([r.openPosition, r.ageing == null ? '-' : r.ageing])), hasP ? ['38%', '24%', '14%', '12%', '12%'] : ['44%', '32%', '12%', '12%']) + (op.length > 10 ? '<div style="font-size:10px;color:#666;margin-top:3px">and ' + (op.length - 10) + ' more</div>' : '');
     }
     // 4. still open by priority + expected joiners
     let pr = '', ex = '';
@@ -10362,7 +10385,7 @@ function talBizPreview(dept, periodType, year, month, half) {
     // 5. long-open priority positions
     const longOpen = reqs.filter(r => r.openPosition > 0 && r.ageing != null && r.ageing > 30 && (!hasP || (r.priority && taPrioRank(r.priority) <= 1))).sort((a, b) => b.ageing - a.ageing);
     const ttl = hasP ? 'High-priority positions open more than 30 days' : 'Positions open more than 30 days';
-    if (longOpen.length) h += sec(ttl) + tbl(['Department and skill', 'BU Head', 'Still open', 'Days open'], longOpen.slice(0, 6).map(r => [esc(dn(r.department) + (r.skillSet ? ' — ' + r.skillSet : '')), esc(/not recorded/i.test(r.buHead) ? '-' : r.buHead), r.openPosition, r.ageing]), ['52%', '24%', '12%', '12%']) + (longOpen.length > 6 ? '<div style="font-size:10px;color:#666;margin-top:3px">and ' + (longOpen.length - 6) + ' more</div>' : '');
+    if (longOpen.length) h += sec(ttl) + tbl(['Department and role', 'BU Head', 'Still open', 'Days open'], longOpen.slice(0, 6).map(r => [esc(dn(r.department) + (taRoleText(r) ? ' — ' + taRoleText(r) : '')), esc(/not recorded/i.test(r.buHead) ? '-' : r.buHead), r.openPosition, r.ageing]), ['52%', '24%', '12%', '12%']) + (longOpen.length > 6 ? '<div style="font-size:10px;color:#666;margin-top:3px">and ' + (longOpen.length - 6) + ' more</div>' : '');
     else h += sec(ttl) + '<div style="font-size:11px;color:#444">None at the moment.</div>';
     return h;
   };
