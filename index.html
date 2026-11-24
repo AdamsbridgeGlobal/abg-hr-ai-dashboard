@@ -1533,6 +1533,12 @@
     </div>
 
     <div class="card">
+      <div class="ctitle" id="ta-rq-title">Quality of each recruiter's sourcing</div>
+      <div class="note" style="margin:0 0 10px" id="ta-rq-note"></div>
+      <div class="scrollbox"><table class="dt" id="ta-rq-table"></table></div>
+    </div>
+
+    <div class="card">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px">
         <div class="ctitle" style="margin:0" id="ta-rt-title">Trend by recruiter</div>
         <span style="margin-left:auto"></span>
@@ -10127,11 +10133,13 @@ function taRpFill() {
 function taRpName(c) { const n = c.recruiterName; return !n || /not recorded/i.test(n) ? 'Other' : n; }
 function taRpCount(p) {
   const inP = d => d && d >= p.s && d <= p.e, m = {};
-  const g = k => m[k] || (m[k] = { sourced: 0, shortlisted: 0, l1: 0, offered: 0, accepted: 0, joined: 0 });
+  const g = k => m[k] || (m[k] = { sourced: 0, shortlisted: 0, l1: 0, offered: 0, accepted: 0, joined: 0, l1Dec: 0, l1Sel: 0, oJoined: 0, oDropped: 0, oOpen: 0, l2Dec: 0, l2Sel: 0, oAcc: 0, sJoined: 0 });
   TA_CANDIDATES.forEach(c => { const k = taRpName(c);
-    if (inP(c.sourcedDate)) { g(k).sourced++; if (/shortlist|select/i.test(c.screeningStatus || '')) g(k).shortlisted++; }
-    if (inP(c.l1Date)) g(k).l1++;
-    if (inP(c.loiIssuedDate)) g(k).offered++;
+    if (inP(c.sourcedDate)) { g(k).sourced++; if (/shortlist|select/i.test(c.screeningStatus || '')) g(k).shortlisted++; if (/joined/i.test(c.candidateStatus || '')) g(k).sJoined++; }
+    if (inP(c.l1Date)) { const x = g(k); x.l1++; const st = c.l1Status || ''; if (/select/i.test(st)) { x.l1Dec++; x.l1Sel++; } else if (/reject/i.test(st)) x.l1Dec++;
+      const s2 = c.l2Status || ''; if (/select/i.test(s2)) { x.l2Dec++; x.l2Sel++; } else if (/reject/i.test(s2)) x.l2Dec++; }
+    if (inP(c.loiIssuedDate)) { const x = g(k); x.offered++; const cs = (c.candidateStatus || '') + ' ' + (c.finalStatus || ''); if (c.loiAcceptDate || /loi accept|document pending|joined/i.test(c.candidateStatus || '')) x.oAcc++;
+      if (/joined/i.test(c.candidateStatus || '')) x.oJoined++; else if (/decline|renege|no ?show|drop|absconded|backed out/i.test(cs)) x.oDropped++; else x.oOpen++; }
     if (inP(c.loiAcceptDate)) g(k).accepted++;
     if (/joined/i.test(c.candidateStatus || '') && inP(c.doj)) g(k).joined++;
   });
@@ -10151,12 +10159,42 @@ function taRpRender() {
   const esc = v => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;');
   const cell = (a, b) => { const d = a - b, col = d > 0 ? '#107C10' : d < 0 ? '#D13438' : '#999'; return '<td><strong>' + a + '</strong><div style="font-size:.7rem;color:#888;font-weight:400;white-space:nowrap">' + esc(pl) + ': ' + b + (d ? ' <span style="color:' + col + '">(' + (d > 0 ? '+' : '−') + Math.abs(d) + ')</span>' : '') + '</div></td>'; };
   const conv = (o, x) => x.sourced ? Math.round(x.joined / x.sourced * 100) : null;
-  const TA_ = {}, TB_ = {}; K.forEach(k => { TA_[k] = names.reduce((s2, n) => s2 + (A[n] || z)[k], 0); TB_[k] = names.reduce((s2, n) => s2 + (B[n] || z)[k], 0); });
-  const offerAcc = x => x.offered ? Math.round(x.accepted / x.offered * 100) + '%' : '-';
-  tEl.innerHTML = names.length ? '<thead><tr><th>Recruiter</th><th>Candidates sourced</th><th>Shortlisted</th><th>First interviews held</th><th>Offers given</th><th>Offers accepted</th><th>People joined</th><th>Offers accepted ÷ given</th></tr></thead><tbody>' +
+  const TA_ = {}, TB_ = {}; K.concat(['oAcc']).forEach(k => { TA_[k] = names.reduce((s2, n) => s2 + ((A[n] || z)[k] || 0), 0); TB_[k] = names.reduce((s2, n) => s2 + ((B[n] || z)[k] || 0), 0); });
+  const offerAcc = x => x.offered ? Math.round((x.oAcc || 0) / x.offered * 100) + '%' : '-';
+  tEl.innerHTML = names.length ? '<thead><tr><th>Recruiter</th><th>Candidates sourced</th><th>Shortlisted</th><th>First interviews held</th><th>Offers given</th><th>Offers accepted</th><th>People joined</th><th title="Of offers given in the period, how many were accepted">Of those offered, accepted</th></tr></thead><tbody>' +
     names.map(n => { const a = A[n] || z, b = B[n] || z; return '<tr><td><strong>' + esc(n) + '</strong></td>' + K.map(k => cell(a[k], b[k])).join('') + '<td>' + offerAcc(a) + '</td></tr>'; }).join('') +
     '<tr style="border-top:2px solid #0D3133;background:#F5F4F2"><td><strong>Whole team</strong></td>' + K.map(k => cell(TA_[k], TB_[k])).join('') + '<td><strong>' + offerAcc(TA_) + '</strong></td></tr></tbody>'
     : '<tbody><tr><td style="color:#999;padding:14px">Nothing was recorded for any recruiter in this ' + word + ' or the one before.</td></tr></tbody>';
+
+  // quality of sourcing: ratios for the same period, each with the previous period underneath
+  try {
+    const QZ = { sourced: 0, shortlisted: 0, l1: 0, offered: 0, accepted: 0, joined: 0, l1Dec: 0, l1Sel: 0, oJoined: 0, oDropped: 0, oOpen: 0, l2Dec: 0, l2Sel: 0, oAcc: 0, sJoined: 0 };
+    const sumOf = (M) => { const t = Object.assign({}, QZ); Object.values(M).forEach(x => Object.keys(QZ).forEach(k => t[k] += x[k])); return t; };
+    const R = [
+      ['Shortlisted ÷ sourced', x => [x.shortlisted, x.sourced], 'Of the candidates sourced in the period, how many passed screening'],
+      ['Selected ÷ interviewed (1st round)', x => [x.l1Sel, x.l1Dec], 'Of first interviews held in the period with a result, how many were selected'],
+      ['Selected ÷ interviewed (2nd round)', x => [x.l2Sel, x.l2Dec], 'Same, for the second round, for candidates whose first interview fell in the period'],
+      ['Interviews per offer', x => [x.l1, x.offered], 'First interviews held for every offer given; lower means fewer interviews were needed'],
+      ['Offers accepted ÷ given', x => [x.oAcc, x.offered], 'Of offers given in the period, how many the candidate accepted'],
+      ['Offer to join', x => [x.oJoined, x.oJoined + x.oDropped], 'Of offers given in the period that have a final outcome, how many joined (the rest declined, backed out or did not show)'],
+      ['Sourced to join', x => [x.sJoined, x.sourced], 'Of the candidates sourced in the period, how many have joined so far (recent periods rise as people join)']
+    ];
+    const has2 = Object.values(A).some(x => x.l2Dec) || Object.values(B).some(x => x.l2Dec);
+    const cols = R.filter(r => has2 || !/2nd round/.test(r[0]));
+    const val = (r, x) => { const [n, d] = r[1](x); if (!d) return null; return /per offer/.test(r[0]) ? Math.round(n / d * 10) / 10 : Math.round(n / d * 100); };
+    const fmt = (r, v) => v === null ? '-' : /per offer/.test(r[0]) ? v.toFixed(1) : v + '%';
+    const qcell = (r, a, b) => { const va = val(r, a), vb = val(r, b), [n, d] = r[1](a); let diff = '';
+      if (va !== null && vb !== null && va !== vb) { const up = va > vb, good = /per offer/.test(r[0]) ? !up : up; diff = ' <span style="color:' + (good ? '#107C10' : '#D13438') + '">(' + (up ? '+' : '−') + (/per offer/.test(r[0]) ? Math.abs(va - vb).toFixed(1) : Math.abs(va - vb) + ' pts') + ')</span>'; }
+      return '<td><strong>' + fmt(r, va) + '</strong>' + (d ? '<span style="font-size:.7rem;color:#888"> &nbsp;' + (/per offer/.test(r[0]) ? n + ' interviews, ' + d + ' offers' : n + ' of ' + d) + '</span>' : '') + '<div style="font-size:.7rem;color:#888;white-space:nowrap">' + esc(pl) + ': ' + fmt(r, vb) + diff + '</div></td>'; };
+    const qn = names.filter(n => (A[n] || QZ).sourced || (A[n] || QZ).l1 || (A[n] || QZ).offered);
+    const TA2 = sumOf(A), TB2 = sumOf(B);
+    document.getElementById('ta-rq-title').textContent = 'Quality of each recruiter\'s sourcing — ' + cur.long + (cur.current ? ' (so far)' : '');
+    document.getElementById('ta-rq-note').innerHTML = 'Higher is better for every measure except interviews per offer, where lower means fewer interviews were needed for each offer. Grey text shows the actual counts, then the previous ' + word + ' and the change in percentage points. Hover over a column heading for its exact meaning.' + (TA2.oOpen ? ' ' + TA2.oOpen + ' offers from this ' + word + ' are still awaiting an outcome and are not in Offer to join yet.' : '');
+    document.getElementById('ta-rq-table').innerHTML = qn.length ? '<thead><tr><th>Recruiter</th>' + cols.map(r => '<th title="' + r[2] + '" style="cursor:help">' + r[0] + '</th>').join('') + '<th title="Offers given in the period where the candidate later declined, backed out or did not join" style="cursor:help">Dropped after offer</th></tr></thead><tbody>' +
+      qn.map(n => { const a = Object.assign({}, QZ, A[n] || {}), b = Object.assign({}, QZ, B[n] || {}); return '<tr><td><strong>' + esc(n) + '</strong></td>' + cols.map(r => qcell(r, a, b)).join('') + '<td><strong>' + a.oDropped + '</strong><div style="font-size:.7rem;color:#888">' + esc(pl) + ': ' + b.oDropped + '</div></td></tr>'; }).join('') +
+      '<tr style="border-top:2px solid #0D3133;background:#F5F4F2"><td><strong>Whole team</strong></td>' + cols.map(r => qcell(r, TA2, TB2)).join('') + '<td><strong>' + TA2.oDropped + '</strong><div style="font-size:.7rem;color:#888">' + esc(pl) + ': ' + TB2.oDropped + '</div></td></tr></tbody>'
+      : '<tbody><tr><td style="color:#999;padding:14px">No sourcing, interviews or offers in this ' + word + '.</td></tr></tbody>';
+  } catch (e) { console.error('Recruiter quality view failed', e); }
   // trend
   const metric = document.getElementById('ta-rt-metric').value, mName = document.getElementById('ta-rt-metric').selectedOptions[0].textContent;
   const six = per.slice(idx, idx + 6).reverse(), cnt = six.map(taRpCount);
