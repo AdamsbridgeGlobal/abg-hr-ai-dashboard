@@ -1520,11 +1520,34 @@
   </div>
 
   <div id="ta-view-performance" style="display:none">
+    <div class="card" style="border-top:3px solid #E69F50">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px">
+        <div class="ctitle" style="margin:0">Each recruiter's work</div>
+        <span style="margin-left:auto"></span>
+        <label style="font-size:.8rem;color:#0D3133;font-weight:700">Show:</label>
+        <select id="ta-rp-type" onchange="taRpFill();taRpRender()" style="padding:7px 12px;border:1.5px solid #73847B;border-radius:6px;font-family:inherit;font-size:.82rem;font-weight:700"><option value="m">Monthly</option><option value="w">Weekly</option></select>
+        <select id="ta-rp-period" onchange="taRpRender()" style="padding:7px 12px;border:1.5px solid #73847B;border-radius:6px;font-family:inherit;font-size:.82rem;font-weight:700"></select>
+      </div>
+      <div class="note" style="margin:0 0 10px" id="ta-rp-note"></div>
+      <div class="scrollbox"><table class="dt" id="ta-rp-table"></table></div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px">
+        <div class="ctitle" style="margin:0" id="ta-rt-title">Trend by recruiter</div>
+        <span style="margin-left:auto"></span>
+        <label style="font-size:.8rem;color:#0D3133;font-weight:700">Measure:</label>
+        <select id="ta-rt-metric" onchange="taRpRender()" style="padding:7px 12px;border:1.5px solid #73847B;border-radius:6px;font-family:inherit;font-size:.82rem;font-weight:700"><option value="sourced">Candidates sourced</option><option value="l1">First interviews held</option><option value="offered">Offers given</option><option value="accepted">Offers accepted</option><option value="joined" selected>People joined</option></select>
+      </div>
+      <div class="note" style="margin:0 0 10px" id="ta-rt-note"></div>
+      <div class="scrollbox"><table class="dt" id="ta-rt-table"></table></div>
+    </div>
+
     <div class="kstrip" id="ta-perf-kstrip" style="grid-template-columns:repeat(3,1fr)"></div>
     <div class="insight" id="ta-perf-intro"></div>
 
     <div class="card">
-      <div class="ctitle">Recruiter Performance</div>
+      <div class="ctitle">Recruiter Performance, all time</div>
       <div class="note" style="margin:0 0 10px">"Req Load" is a real proxy, not an exact count — Open Requirements has no Recruiter field, so this is the number of distinct departments where that recruiter currently has active candidates, as a stand-in for how spread across different hiring needs they are. "Avg Time to Fill" is Sourced Date to DOJ for that recruiter's own confirmed joins — a candidate-level measure, not tied to a specific requisition's raise date, since no field links the two.</div>
       <table class="dt" id="ta-perf-recruiter-table"></table>
     </div>
@@ -10059,6 +10082,7 @@ function renderTalentAcquisition() {
   // actually managed: recruiter load/delivery/conversion, source
   // effectiveness, and a real (if approximate) time-to-fill measure.
   // ══════════════════════════════════════════════════════════════════
+  try { taRpRender(); } catch (e) { console.error('Recruiter period view failed', e); }
   const reqLoad = computeRecruiterReqLoad(TA_CANDIDATES);
   const reqLoadByRecruiter = {};
   reqLoad.forEach(r => { reqLoadByRecruiter[r.recruiter] = r; });
@@ -10083,6 +10107,69 @@ function renderTalentAcquisition() {
     '<thead><tr><th>Source</th><th>Sourced</th><th>Joined</th><th>Conversion %</th><th>Avg Time to Fill</th></tr></thead><tbody>' +
     sourceEff.map(s => `<tr><td>${s.source}</td><td>${s.sourced}</td><td>${s.joined}</td><td><strong style="color:${s.convPct>=20?'#107C10':s.convPct>=10?'#DA8A00':'#D13438'}">${s.convPct}%</strong></td><td>${s.avgTimeToFillDays!==null?s.avgTimeToFillDays+'d ('+s.ttfSampleSize+')':' - '}</td></tr>`).join('') +
     '</tbody>';
+}
+
+// ── Recruiter work by period: monthly or weekly, each compared with the period before, plus a six-period trend ──
+// Every number is counted by the date of the event (sourced date, first-interview date, offer date, acceptance date,
+// joining date), so a period shows what each recruiter actually got done in it.
+const TA_RP_MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function taRpPeriods(type, n) {
+  const t = new Date(), out = [];
+  if (type === 'w') return tawWeeks(n).map(w => ({ s: w.s, e: w.e, label: tawLabel(w, true), long: tawLabel(w), current: w.current }));
+  for (let i = 0; i < n; i++) { const s0 = new Date(Date.UTC(t.getFullYear(), t.getMonth() - i, 1)), e0 = new Date(Date.UTC(s0.getUTCFullYear(), s0.getUTCMonth() + 1, 0, 23, 59, 59)); out.push({ s: s0, e: e0, label: TA_RP_MON[s0.getUTCMonth()] + ' ' + String(s0.getUTCFullYear()).slice(2), long: TA_RP_MON[s0.getUTCMonth()] + ' ' + s0.getUTCFullYear(), current: i === 0 }); }
+  return out;
+}
+function taRpFill() {
+  const type = document.getElementById('ta-rp-type').value, sel = document.getElementById('ta-rp-period');
+  sel.innerHTML = ''; taRpPeriods(type, type === 'w' ? 13 : 12).forEach((p, i) => { const o = document.createElement('option'); o.value = i; o.textContent = p.long + (p.current ? (type === 'w' ? ' (this week so far)' : ' (so far)') : ''); sel.appendChild(o); });
+  sel.value = type === 'w' ? '1' : '0';
+}
+function taRpName(c) { const n = c.recruiterName; return !n || /not recorded/i.test(n) ? 'Other' : n; }
+function taRpCount(p) {
+  const inP = d => d && d >= p.s && d <= p.e, m = {};
+  const g = k => m[k] || (m[k] = { sourced: 0, shortlisted: 0, l1: 0, offered: 0, accepted: 0, joined: 0 });
+  TA_CANDIDATES.forEach(c => { const k = taRpName(c);
+    if (inP(c.sourcedDate)) { g(k).sourced++; if (/shortlist|select/i.test(c.screeningStatus || '')) g(k).shortlisted++; }
+    if (inP(c.l1Date)) g(k).l1++;
+    if (inP(c.loiIssuedDate)) g(k).offered++;
+    if (inP(c.loiAcceptDate)) g(k).accepted++;
+    if (/joined/i.test(c.candidateStatus || '') && inP(c.doj)) g(k).joined++;
+  });
+  return m;
+}
+function taRpRender() {
+  const tEl = document.getElementById('ta-rp-table'); if (!tEl) return;
+  if (!document.getElementById('ta-rp-period').options.length) taRpFill();
+  const type = document.getElementById('ta-rp-type').value, idx = parseInt(document.getElementById('ta-rp-period').value || '0');
+  const per = taRpPeriods(type, (type === 'w' ? 13 : 12) + 6), cur = per[idx], prev = per[idx + 1];
+  const A = taRpCount(cur), B = taRpCount(prev), K = ['sourced', 'shortlisted', 'l1', 'offered', 'accepted', 'joined'];
+  const z = { sourced: 0, shortlisted: 0, l1: 0, offered: 0, accepted: 0, joined: 0 };
+  const names = [...new Set([...Object.keys(A), ...Object.keys(B)])].filter(n => K.some(k => (A[n] || z)[k] || (B[n] || z)[k]))
+    .sort((a, b) => (a === 'Other') - (b === 'Other') || ((A[b] || z).joined - (A[a] || z).joined) || ((A[b] || z).sourced - (A[a] || z).sourced) || a.localeCompare(b));
+  const word = type === 'w' ? 'week' : 'month', pl = prev.label;
+  document.getElementById('ta-rp-note').innerHTML = 'What each recruiter got done in <strong>' + cur.long + (cur.current ? ' (so far)' : '') + '</strong>. The small grey line under each number is the previous ' + word + ' (' + prev.long + ') and the difference. Each number counts events dated inside the ' + word + '.' + (cur.current ? ' This ' + word + ' is not over yet, so its numbers will usually be lower than a full ' + word + '.' : '');
+  const esc = v => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const cell = (a, b) => { const d = a - b, col = d > 0 ? '#107C10' : d < 0 ? '#D13438' : '#999'; return '<td><strong>' + a + '</strong><div style="font-size:.7rem;color:#888;font-weight:400;white-space:nowrap">' + esc(pl) + ': ' + b + (d ? ' <span style="color:' + col + '">(' + (d > 0 ? '+' : '−') + Math.abs(d) + ')</span>' : '') + '</div></td>'; };
+  const conv = (o, x) => x.sourced ? Math.round(x.joined / x.sourced * 100) : null;
+  const TA_ = {}, TB_ = {}; K.forEach(k => { TA_[k] = names.reduce((s2, n) => s2 + (A[n] || z)[k], 0); TB_[k] = names.reduce((s2, n) => s2 + (B[n] || z)[k], 0); });
+  const offerAcc = x => x.offered ? Math.round(x.accepted / x.offered * 100) + '%' : '-';
+  tEl.innerHTML = names.length ? '<thead><tr><th>Recruiter</th><th>Candidates sourced</th><th>Shortlisted</th><th>First interviews held</th><th>Offers given</th><th>Offers accepted</th><th>People joined</th><th>Offers accepted ÷ given</th></tr></thead><tbody>' +
+    names.map(n => { const a = A[n] || z, b = B[n] || z; return '<tr><td><strong>' + esc(n) + '</strong></td>' + K.map(k => cell(a[k], b[k])).join('') + '<td>' + offerAcc(a) + '</td></tr>'; }).join('') +
+    '<tr style="border-top:2px solid #0D3133;background:#F5F4F2"><td><strong>Whole team</strong></td>' + K.map(k => cell(TA_[k], TB_[k])).join('') + '<td><strong>' + offerAcc(TA_) + '</strong></td></tr></tbody>'
+    : '<tbody><tr><td style="color:#999;padding:14px">Nothing was recorded for any recruiter in this ' + word + ' or the one before.</td></tr></tbody>';
+  // trend
+  const metric = document.getElementById('ta-rt-metric').value, mName = document.getElementById('ta-rt-metric').selectedOptions[0].textContent;
+  const six = per.slice(idx, idx + 6).reverse(), cnt = six.map(taRpCount);
+  const tn = [...new Set(cnt.flatMap(c => Object.keys(c)))].filter(n => cnt.some(c => (c[n] || z)[metric])).sort((a, b) => (a === 'Other') - (b === 'Other') || cnt.reduce((s2, c) => s2 + (c[b] || z)[metric], 0) - cnt.reduce((s2, c) => s2 + (c[a] || z)[metric], 0));
+  document.getElementById('ta-rt-title').textContent = mName + ', last six ' + word + 's, by recruiter';
+  document.getElementById('ta-rt-note').innerHTML = 'Ends with ' + cur.long + '. The darker the cell, the higher the number for that recruiter.';
+  const rt = document.getElementById('ta-rt-table');
+  if (!tn.length) { rt.innerHTML = '<tbody><tr><td style="color:#999;padding:14px">No ' + mName.toLowerCase() + ' in these six ' + word + 's.</td></tr></tbody>'; return; }
+  const mx = Math.max(1, ...tn.map(n => Math.max(...cnt.map(c => (c[n] || z)[metric]))));
+  const shade = v => v ? 'background:rgba(13,49,51,' + (0.08 + 0.5 * v / mx).toFixed(2) + ');color:' + (v / mx > 0.6 ? '#fff' : '#0D3133') + ';font-weight:700' : 'color:#bbb';
+  rt.innerHTML = '<thead><tr><th>Recruiter</th>' + six.map(p => '<th style="text-align:center">' + esc(p.label) + '</th>').join('') + '<th style="text-align:center">Total</th></tr></thead><tbody>' +
+    tn.map(n => '<tr><td><strong>' + esc(n) + '</strong></td>' + cnt.map(c => { const v = (c[n] || z)[metric]; return '<td style="text-align:center;' + shade(v) + '">' + (v || '-') + '</td>'; }).join('') + '<td style="text-align:center"><strong>' + cnt.reduce((s2, c) => s2 + (c[n] || z)[metric], 0) + '</strong></td></tr>').join('') +
+    '<tr style="border-top:2px solid #0D3133;background:#F5F4F2"><td><strong>Whole team</strong></td>' + cnt.map(c => '<td style="text-align:center"><strong>' + tn.reduce((s2, n) => s2 + (c[n] || z)[metric], 0) + '</strong></td>').join('') + '<td style="text-align:center"><strong>' + cnt.reduce((s2, c) => s2 + tn.reduce((s3, n) => s3 + (c[n] || z)[metric], 0), 0) + '</strong></td></tr></tbody>';
 }
 
 function renderInsights() {
