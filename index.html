@@ -184,6 +184,8 @@
   .insight strong { color:#0D3133; }
   .action { background:#0D3133; color:#fff; border-radius:6px; padding:10px 15px; font-size:.76rem; line-height:1.6; margin-top:8px; }
   .action strong { color:#EAB171; }
+  .kra-lab { font-size:.8rem; color:#0D3133; font-weight:700; }
+  .kra-sel { padding:7px 12px; border:1.5px solid #73847B; border-radius:6px; font-family:inherit; font-size:.82rem; font-weight:700; background:#fff; }
   table.dt { width:100%; border-collapse:separate; border-spacing:0; font-size:.77rem; }
   table.dt th { text-align:left; padding:7px 10px; background:#E9EBEA; font-size:.63rem; text-transform:uppercase; letter-spacing:.05em; color:#666; position:sticky; top:0; z-index:2; box-shadow:0 1px 0 #d4d7d6; }
   table.dt td { padding:6px 10px; border-bottom:1px solid #E9EBEA; }
@@ -301,6 +303,8 @@
     <button class="tab" onclick="goTab(this,'p2')">Diversity</button>
     <button class="tab" onclick="goTab(this,'p13')">Capacity Mix</button>
     <button class="tab" onclick="goTab(this,'p12')">Talent Acquisition</button>
+    <button class="tab" onclick="goTab(this,'pkra'); kraRender()">Performance Evaluation</button>
+    <button class="tab" onclick="goTab(this,'ppulse'); pulseRender()">HR Pulse Survey</button>
     <button class="tab" onclick="goTab(this,'preports'); repSelect(REP_CURRENT)">Reports</button>
     <button class="tab tab-guide" onclick="goTab(this,'pguide')">? Guide</button>
   </div>
@@ -351,6 +355,83 @@
     <div class="ctitle" id="org-title">Reporting structure</div>
     <div class="note" id="org-note" style="margin-bottom:10px"></div>
     <div id="org-groups"></div>
+  </div>
+</div>
+
+<div class="pg" id="pkra">
+  <div class="tab-banner"><strong>Performance evaluation.</strong> KRA scores worked out from the trackers, one row per person. Choose the team, monthly, quarterly or yearly, and the period. KRAs that are not in any tracker are scored by the team in their KRA sheet, and are left out here.</div>
+  <div class="card"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <label class="kra-lab">Team:</label><select id="kra-team" class="kra-sel" onchange="kraRender()"><option value="ta">Talent Acquisition</option></select>
+    <label class="kra-lab">Show:</label><select id="kra-type" class="kra-sel" onchange="kraFillPeriods();kraRender()"><option value="m">Monthly</option><option value="q">Quarterly</option><option value="y">Yearly</option></select>
+    <select id="kra-period" class="kra-sel" onchange="kraRender()"></select>
+    <label class="kra-lab">TAT and ageing:</label><select id="kra-method" class="kra-sel" onchange="kraRender()"><option value="graded">Graded (part credit after 30 days)</option><option value="pass">Pass or fail at 30 days</option></select>
+  </div></div>
+  <div class="kstrip" id="kra-kstrip" style="grid-template-columns:repeat(4,1fr)"></div>
+  <div class="card">
+    <div class="ctitle" id="kra-sc-title">Scorecard</div>
+    <div class="note" style="margin:0 0 10px" id="kra-sc-note"></div>
+    <div class="scrollbox"><table class="dt" id="kra-sc-table"></table></div>
+  </div>
+  <div class="card">
+    <div class="ctitle" id="kra-tr-title">Score trend</div>
+    <div class="note" style="margin:0 0 10px">Score on the KRAs measured here, scaled to 100. The darker the cell, the higher the score.</div>
+    <div class="scrollbox"><table class="dt" id="kra-tr-table"></table></div>
+  </div>
+  <div class="card" style="border-top:3px solid #E69F50">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px">
+      <div class="ctitle" style="margin:0" id="kra-pd-title">Person detail</div><span style="margin-left:auto"></span>
+      <label class="kra-lab">Person:</label><select id="kra-person" class="kra-sel" onchange="kraRenderPerson()"></select>
+      <button onclick="kraCopy()" style="padding:8px 16px;background:#0D3133;color:#fff;border:none;border-radius:6px;font-family:inherit;font-weight:700;font-size:.82rem;cursor:pointer">Copy scores for the KRA sheet</button>
+      <span id="kra-copy-status" style="font-size:.76rem;color:#888"></span>
+    </div>
+    <div class="note" style="margin:0 0 10px">The copy button copies the Actual Achievement (%) column in the same order as the KRA sheet. Paste it into the first grey cell; the two KRAs scored by the team are left blank.</div>
+    <div class="scrollbox"><table class="dt" id="kra-pd-table"></table></div>
+  </div>
+</div>
+
+<div class="pg" id="ppulse">
+  <div class="tab-banner"><strong>Quarterly HR pulse survey, leadership.</strong> how leaders rate HR's support, read live from the survey responses file on OneDrive. Choose the quarter and department. Names and employee IDs from the form are not used, and departments with fewer than 3 responses are not shown on their own.</div>
+  <div class="card"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <label class="kra-lab">Quarter:</label><select id="pulse-q" class="kra-sel" onchange="pulseRender()"></select>
+    <label class="kra-lab">Department:</label><select id="pulse-dept" class="kra-sel" onchange="pulseRender()"><option value="">All departments</option></select>
+    <button onclick="pulseLoad(true)" style="padding:8px 16px;background:#fff;color:#0D3133;border:1.5px solid #73847B;border-radius:6px;font-family:inherit;font-weight:700;font-size:.82rem;cursor:pointer">Refresh</button>
+    <span id="pulse-status" style="font-size:.78rem;color:#888"></span>
+  </div></div>
+  <div id="pulse-body" style="display:none">
+    <div class="kstrip" id="pulse-kstrip" style="grid-template-columns:repeat(4,1fr)"></div>
+    <div class="card">
+      <div class="ctitle">Satisfaction with each HR team</div>
+      <div class="note" style="margin:0 0 10px">How satisfied leaders are with each team's support. Average is on a 1 to 5 scale, where 5 is very satisfied.</div>
+      <div class="chwrap" style="height:240px"><canvas id="pulse-sat-chart" role="img" aria-label="Stacked bar chart of satisfaction with each HR team"></canvas></div>
+      <div class="scrollbox" style="margin-top:10px"><table class="dt" id="pulse-sat-table"></table></div>
+    </div>
+    <div class="card">
+      <div class="ctitle">Ratings on specific services</div>
+      <div class="note" style="margin:0 0 10px">Each statement was rated 1 to 5. "Not applicable" answers are left out of the averages.</div>
+      <div class="scrollbox"><table class="dt" id="pulse-items-table"></table></div>
+    </div>
+    <div class="grid2" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="card"><div class="ctitle">Do team members know their HRBP and ECD?</div><div class="scrollbox"><table class="dt" id="pulse-know-table"></table></div></div>
+      <div class="card"><div class="ctitle">Regular HR updates for the department</div><div class="scrollbox"><table class="dt" id="pulse-upd-table"></table></div></div>
+    </div>
+    <div class="card">
+      <div class="ctitle">How often HRBP and ECD connect</div>
+      <div class="note" style="margin:0 0 10px">Share of leaders choosing each answer. The darker the cell, the more leaders chose it.</div>
+      <div class="scrollbox"><table class="dt" id="pulse-conn-table"></table></div>
+    </div>
+    <div class="card">
+      <div class="ctitle">By department</div>
+      <div class="note" style="margin:0 0 10px" id="pulse-dept-note"></div>
+      <div class="scrollbox"><table class="dt" id="pulse-dept-table"></table></div>
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px">
+        <div class="ctitle" style="margin:0">What leaders said</div><span style="margin-left:auto"></span>
+        <label class="kra-lab">Question:</label><select id="pulse-cq" class="kra-sel" onchange="pulseRenderComments()"></select>
+      </div>
+      <div class="note" style="margin:0 0 10px" id="pulse-c-note"></div>
+      <div id="pulse-comments"></div>
+    </div>
   </div>
 </div>
 
@@ -1890,6 +1971,9 @@ async function loadTalentAcquisitionData(token) {
         buHead: findCol(headers, ['BU Head']),
         department: findCol(headers, ['Department']),
         offeredCTC: findCol(headers, ['Offered CTC']),
+        email: findCol(headers, ['Email ID']),
+        contact: findCol(headers, ['Contact']),
+        posReqDate: findCol(headers, ['Position Requested Date']),
       };
       const normTA = s => String(s||'').trim();
       // Casing normalization for Source/Screening Status, same discipline used
@@ -1925,6 +2009,10 @@ async function loadTalentAcquisitionData(token) {
           buHead: normTA(I.buHead>=0 ? r[I.buHead] : '') || '(not recorded)',
           department: normTA(I.department>=0 ? r[I.department] : '') || '(not recorded)',
           offeredCTC: (typeof (I.offeredCTC>=0 ? r[I.offeredCTC] : null) === 'number') ? r[I.offeredCTC] : null,
+          // email and phone are kept only to link a candidate to the Final Select sheet; they are never shown
+          email: normTA(I.email>=0 ? r[I.email] : '').toLowerCase(),
+          phone: String(I.contact>=0 ? (r[I.contact]||'') : '').replace(/\D/g,'').slice(-10),
+          posReqDate: parseExcelDate(I.posReqDate>=0 ? r[I.posReqDate] : null),
         }))
         .filter(c => c.name); // drop blank rows
       console.log(`TA: loaded ${TA_CANDIDATES.length} candidates from Base Sheet.`);
@@ -1958,6 +2046,7 @@ async function loadTalentAcquisitionData(token) {
         openPosition: findCol(headers, ['Open Position']),
         comment: findCol(headers, ['Comment']),
         priority: findCol(headers, ['Priority']),
+        poc: findCol(headers, ['POC']),
         designation: findCol(headers, ['Designation', 'Role']),
         level: findCol(headers, ['Level', 'Grade', 'Band']),
       };
@@ -2036,6 +2125,7 @@ async function loadTalentAcquisitionData(token) {
           openPosition: Math.max(0, numOr0(I.target>=0 ? r[I.target] : null) - numOr0(I.joined>=0 ? r[I.joined] : null) - numOr0(I.loiAccept>=0 ? r[I.loiAccept] : null) - numOr0(I.loiPending>=0 ? r[I.loiPending] : null) - numOr0(I.docPending>=0 ? r[I.docPending] : null)),
           comment: String(I.comment>=0 ? (r[I.comment]||'') : '').trim(),
           priority: taPrioLabel(I.priority>=0 ? r[I.priority] : ''),
+          poc: String(I.poc>=0 ? (r[I.poc]||'') : '').trim(),
           designation: String(I.designation>=0 ? (r[I.designation]||'') : '').trim().replace(/\s+/g,' '),
           level: String(I.level>=0 ? (r[I.level]||'') : '').trim().replace(/\s+/g,' '),
         }));
@@ -2086,12 +2176,14 @@ async function loadTalentAcquisitionData(token) {
     // individual ageing/closure numbers to specific candidates — never
     // combined with Base Sheet's own row count, which would double them.
     if (finalSelectRows.length >= 2) {
-      const fsHeaderScan = taFindHeaderRow(finalSelectRows, ['Candidate Name','Candidate Status','Req received date','DOJ','Department'], 4);
+      const fsHeaderScan = taFindHeaderRow(finalSelectRows, ['Candidate Name','Name','Candidate Status','Req received date','DOJ','Department'], 4);
       if (fsHeaderScan.score < 3) console.warn(`TA: Final Select Candidates Sheet header row detection is low-confidence (matched only ${fsHeaderScan.score} of 5 expected columns at row ${fsHeaderScan.idx}) — check the sheet structure if numbers look wrong.`);
       const fsHeaders = finalSelectRows[fsHeaderScan.idx];
       const FI = {
-        candidateName: findCol(fsHeaders, ['Candidate Name']),
+        candidateName: findCol(fsHeaders, ['Candidate Name', 'Name']),
         email: findCol(fsHeaders, ['Email ID']),
+        contact: findCol(fsHeaders, ['Contact']),
+        recruiter: findCol(fsHeaders, ['Recruiter']),
         designation: findCol(fsHeaders, ['Designation']),
         candidateStatus: findCol(fsHeaders, ['Candidate Status']),
         doj: findCol(fsHeaders, ['DOJ']),
@@ -2115,6 +2207,8 @@ async function loadTalentAcquisitionData(token) {
           department: normFS(FI.department>=0 ? r[FI.department] : '') || '(not recorded)',
           posType: normFS(FI.posType>=0 ? r[FI.posType] : ''),
           reqDate: parseExcelDate(FI.reqDate>=0 ? r[FI.reqDate] : null),
+          phone: String(FI.contact>=0 ? (r[FI.contact]||'') : '').replace(/\D/g,'').slice(-10),
+          recruiter: normFS(FI.recruiter>=0 ? r[FI.recruiter] : ''),
         }))
         .filter(c => c.name); // drop blank rows
       console.log(`TA: loaded ${TA_FINAL_SELECT.length} final-select candidates (${TA_FINAL_SELECT.filter(c=>c.reqDate).length} with a real Req received date).`);
@@ -5740,6 +5834,284 @@ async function tawDownload() {
   finally { if (wrap.parentNode) document.body.removeChild(wrap); }
 }
 
+// ═════════ PERFORMANCE EVALUATION (KRA) ═════════
+// Scores follow the TA team's KRA sheet: the same KRAs, weights, targets and formulas. Everything is read from the
+// recruitment tracker: Base Sheet (candidates), Open Requirements (requirements and their POC) and the Final Select
+// Candidates Sheet (requirement received date for selected candidates, linked by email, then phone).
+const KRA_MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const KRA_DEF = {
+  ta: [
+    { id: 'ful', name: 'Hiring Fulfilment', w: 0.15, target: '≥90%', how: 'Joiners in the period ÷ (joiners + positions still unfilled at the end of the period, including those that joined later)' },
+    { id: 'tat', name: 'Hiring TAT / SLA', w: 0.15, target: '≥90%', how: 'Joiners whose offer was accepted within 30 days of the requirement being received' },
+    { id: 'otj', name: 'Offer-to-Join Ratio', w: 0.15, target: '≥80%', how: 'Joined ÷ (joined + offers declined)' },
+    { id: 'age', name: 'Requisition Ageing', w: 0.05, target: '≤10% ageing', how: 'Own open requirements older than 30 days at the end of the period' },
+    { id: 'dat', name: 'Data Management', w: 0.05, target: '≥99%', how: 'Tracker rows with every key field filled for their stage' },
+    { id: 'src', name: 'Sourcing Mix & Channel Effectiveness', w: 0.15, target: '≥3 channels; none >50%', how: 'Average of: channels with a joiner (÷3) and the top channel\'s share kept at or under 50%' },
+    { id: 'stk', name: 'Hiring Manager / Stakeholder Feedback', w: 0.10, target: '≥4/5', how: 'Scored by the team in the KRA sheet', manual: true },
+    { id: 'div', name: 'Diversity Hiring', w: 0.10, target: '33% women', how: 'Women ÷ joiners, against 33%, capped at 100%' },
+    { id: 'dev', name: 'Self Development / Upskilling', w: 0.10, target: '1–2 sessions a quarter', how: 'Scored by the team in the KRA sheet', manual: true }
+  ]
+};
+function kraPeriods(type) {
+  const t = new Date(), out = [];
+  const dates = TA_CANDIDATES.map(c => c.doj).filter(Boolean).filter(d => d <= t);
+  const first = dates.length ? new Date(Math.min(...dates)) : new Date(Date.UTC(t.getFullYear(), t.getMonth(), 1));
+  const fy = d => d.getUTCMonth() >= 3 ? d.getUTCFullYear() : d.getUTCFullYear() - 1;
+  const fyl = y => 'FY ' + y + '-' + String(y + 1).slice(2);
+  const end = (y, m) => new Date(Date.UTC(y, m + 1, 0, 23, 59, 59));
+  if (type === 'm') { for (let d = new Date(Date.UTC(t.getFullYear(), t.getMonth(), 1)); d >= new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth(), 1)); d = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 1))) out.push({ s: d, e: end(d.getUTCFullYear(), d.getUTCMonth()), label: KRA_MON[d.getUTCMonth()] + ' ' + d.getUTCFullYear(), short: KRA_MON[d.getUTCMonth()] + ' ' + String(d.getUTCFullYear()).slice(2) }); }
+  else if (type === 'q') { let d = new Date(Date.UTC(t.getFullYear(), t.getMonth() - (((t.getMonth() - 3) % 3) + 3) % 3, 1)); while (d >= new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() - 2, 1))) { const y = fy(d), q = Math.floor(((d.getUTCMonth() - 3 + 12) % 12) / 3) + 1, e = end(d.getUTCFullYear(), d.getUTCMonth() + 2); out.push({ s: d, e, label: 'Q' + q + ' ' + fyl(y) + ' (' + KRA_MON[d.getUTCMonth()] + '–' + KRA_MON[e.getUTCMonth()] + ' ' + e.getUTCFullYear() + ')', short: 'Q' + q + ' ' + String(y).slice(2) + '-' + String(y + 1).slice(2) }); d = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 3, 1)); } }
+  else { for (let y = fy(t); y >= fy(first); y--) out.push({ s: new Date(Date.UTC(y, 3, 1)), e: end(y + 1, 2), label: fyl(y) + ' (Apr ' + y + '–Mar ' + (y + 1) + ')', short: fyl(y) }); }
+  out.forEach(p => { p.current = p.e >= t; });
+  return out;
+}
+function kraFillPeriods() { const sel = document.getElementById('kra-period'), type = document.getElementById('kra-type').value; sel.innerHTML = ''; kraPeriods(type).forEach((p, i) => { const o = document.createElement('option'); o.value = i; o.textContent = p.label + (p.current ? ' (so far)' : ''); sel.appendChild(o); }); }
+// Recruiter names: the POC column sometimes holds a short form ("Venkat" for "Venkatesan"); a POC that is the start of exactly one recruiter's name is treated as that recruiter.
+function kraNameMap() {
+  const rec = [...new Set(TA_CANDIDATES.map(c => c.recruiterName).filter(n => n && !/not recorded/i.test(n)))];
+  const m = {}; rec.forEach(n => m[n.toLowerCase()] = n);
+  [...new Set(TA_OPEN_REQS.map(r => r.poc).filter(Boolean))].forEach(p => { const k = p.toLowerCase(); if (m[k]) return; const hits = rec.filter(n => n.toLowerCase().startsWith(k) || k.startsWith(n.toLowerCase())); m[k] = hits.length === 1 ? hits[0] : p; });
+  return n => n ? (m[String(n).toLowerCase()] || String(n)) : '';
+}
+function kraReqDateIndex() {
+  const byE = {}, byP = {};
+  TA_FINAL_SELECT.forEach(f => { if (!f.reqDate) return; if (f.email) byE[f.email] = f.reqDate; if (f.phone) byP[f.phone] = f.reqDate; });
+  return c => (c.email && byE[c.email]) || (c.phone && byP[c.phone]) || c.posReqDate || null;
+}
+const KRA_OFFERED = /joined|loi accept|document pending|offer decline|loi offered|loi pending|renege/i;
+function kraCompute(p, method) {
+  const nm = kraNameMap(), rd = kraReqDateIndex(), now = new Date(), day = 864e5;
+  const inP = d => d && d >= p.s && d <= p.e;
+  const R = {}; const g = n => R[n] || (R[n] = { name: n, J: 0, Jafter: 0, U: 0, tatN: 0, tatPass: 0, tatCredit: 0, tatNeg: 0, tatMissing: 0, dec: 0, openReqs: 0, oldReqs: 0, ageCredit: 0, src: {}, women: 0, rows: 0, clean: 0, pocReqs: 0 });
+  TA_CANDIDATES.forEach(c => {
+    const n = nm(c.recruiterName); if (!n || /not recorded/i.test(n)) return;
+    const st = (c.candidateStatus || '').toLowerCase(), joined = /joined/.test(st);
+    // joined after the period, for a requirement that was already open at the end of it (when the requirement date is known)
+    if (joined && c.doj && c.doj > p.e && c.doj <= now) { const rq = rd(c); if (!rq || rq <= p.e) g(n).Jafter++; }
+    if (joined && inP(c.doj)) {
+      const x = g(n); x.J++;
+      const sKey = (c.source || '').replace(/\s+/g, ' ').trim().toLowerCase(); if (sKey && !/not recorded/.test(sKey)) x.src[sKey] = (x.src[sKey] || 0) + 1;
+      if (/^f/i.test(c.gender || '')) x.women++;
+      const req = rd(c), acc = c.loiAcceptDate || c.loiIssuedDate;
+      if (req && acc) { const d = Math.round((acc - req) / day); x.tatN++; if (d < 0) x.tatNeg++; if (d <= 30) { x.tatPass++; x.tatCredit += 1; } else x.tatCredit += 30 / d; }
+      else x.tatMissing++;
+    }
+    if (/decline|renege/.test(st) && inP(c.doj || c.loiIssuedDate)) g(n).dec++;
+    if (inP(c.sourcedDate)) {
+      const x = g(n); x.rows++;
+      let ok = !!(c.source && !/not recorded/i.test(c.source)) && !!c.gender && !!(c.screeningStatus && !/not recorded/i.test(c.screeningStatus));
+      const offered = KRA_OFFERED.test(st);
+      if (offered && !c.loiIssuedDate) ok = false;
+      if (/joined|loi accept|document pending/.test(st) && !c.loiAcceptDate) ok = false;
+      if (joined && (!c.doj || !c.department || /not recorded/i.test(c.department))) ok = false;
+      if (ok) x.clean++;
+    }
+  });
+  TA_OPEN_REQS.forEach(r => {
+    const n = nm(r.poc); if (!n || !r.reqDate || r.reqDate > p.e) return;
+    const x = g(n); x.pocReqs++; x.U += Math.max(0, (r.target || 0) - (r.joined || 0));
+    if (r.openPosition > 0) { x.openReqs++; const age = Math.round((Math.min(p.e, now) - r.reqDate) / day); if (age > 30) { x.oldReqs++; x.ageCredit += 30 / age; } else x.ageCredit += 1; }
+  });
+  const out = Object.values(R).map(x => {
+    const v = {}, n = {};
+    const dem = x.J + x.U + x.Jafter; v.ful = dem && x.pocReqs ? x.J / dem : null; n.ful = x.pocReqs ? x.J + ' joined of ' + dem + ' (' + x.U + ' unfilled, ' + x.Jafter + ' joined after)' : 'No requirements with this person as POC';
+    v.tat = x.tatN ? (method === 'pass' ? x.tatPass / x.tatN : x.tatCredit / x.tatN) : null; n.tat = x.tatPass + ' of ' + x.tatN + ' within 30 days' + (x.tatMissing ? '; ' + x.tatMissing + ' joiner' + (x.tatMissing > 1 ? 's' : '') + ' without both dates' : '') + (x.tatNeg ? '; ' + x.tatNeg + ' accepted before the requirement date' : '');
+    v.otj = (x.J + x.dec) ? x.J / (x.J + x.dec) : null; n.otj = x.J + ' joined, ' + x.dec + ' declined';
+    if (!x.tatN && !x.tatMissing) n.tat = 'No joiners in the period';
+    v.age = x.openReqs ? (method === 'pass' ? 1 - x.oldReqs / x.openReqs : x.ageCredit / x.openReqs) : (x.pocReqs ? 1 : null); n.age = x.pocReqs ? x.oldReqs + ' of ' + x.openReqs + ' open requirements older than 30 days' : 'No requirements with this person as POC';
+    v.dat = x.rows ? x.clean / x.rows : null; n.dat = x.rows ? x.clean + ' of ' + x.rows + ' rows complete' : 'No candidates sourced in the period';
+    const tot = Object.values(x.src).reduce((a, b) => a + b, 0), ch = Object.keys(x.src).length, top = tot ? Math.max(...Object.values(x.src)) / tot : 0;
+    v.src = tot ? (Math.min(1, ch / 3) + Math.min(1, 0.5 / top)) / 2 : null; n.src = ch + ' channel' + (ch === 1 ? '' : 's') + (tot ? ', top ' + Math.round(top * 100) + '%' : '');
+    v.div = x.J ? Math.min(1, (x.women / x.J) / 0.33) : null; n.div = x.women + (x.women === 1 ? ' woman' : ' women') + ' of ' + x.J + (x.J === 1 ? ' joiner' : ' joiners');
+    let ws = 0, wa = 0; KRA_DEF.ta.forEach(k => { if (!k.manual && v[k.id] !== null && v[k.id] !== undefined) { ws += k.w * v[k.id]; wa += k.w; } });
+    return { name: x.name, v, n, weighted: ws, covered: wa, scaled: wa ? ws / wa : null, active: x.J || x.rows || x.openReqs || x.U || x.dec };
+  }).filter(x => x.active).sort((a, b) => (b.scaled || 0) - (a.scaled || 0) || a.name.localeCompare(b.name));
+  return out;
+}
+let KRA_LAST = null;
+function kraRender() {
+  const sel = document.getElementById('kra-period'); if (!sel) return;
+  if (!sel.options.length) kraFillPeriods();
+  const esc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const type = document.getElementById('kra-type').value, method = document.getElementById('kra-method').value, idx = parseInt(sel.value || '0');
+  const per = kraPeriods(type), p = per[idx], pp = per[idx + 1];
+  if (!p || !TA_CANDIDATES.length) { document.getElementById('kra-sc-table').innerHTML = '<tbody><tr><td style="color:#999;padding:14px">The recruitment tracker has not loaded in this session. Refresh the dashboard and try again.</td></tr></tbody>'; return; }
+  const rows = kraCompute(p, method), prev = pp ? kraCompute(pp, method) : [], pm = {}; prev.forEach(x => pm[x.name] = x);
+  KRA_LAST = { p, rows, method };
+  const K = KRA_DEF.ta.filter(k => !k.manual), pc = v => v === null || v === undefined ? '-' : Math.round(v * 100) + '%';
+  const word = { m: 'month', q: 'quarter', y: 'year' }[type];
+  const sc = rows.map(r => r.scaled).filter(v => v !== null), avg = sc.length ? sc.reduce((a, b) => a + b, 0) / sc.length : null;
+  const pa = prev.map(r => r.scaled).filter(v => v !== null), pavg = pa.length ? pa.reduce((a, b) => a + b, 0) / pa.length : null;
+  const best = rows.find(r => r.scaled !== null);
+  document.getElementById('kra-kstrip').innerHTML = kpi('Team average score', avg === null ? '-' : Math.round(avg * 100), pavg === null ? 'on the KRAs measured here, out of 100' : 'previous ' + word + ': ' + Math.round(pavg * 100)) + kpi('People scored', rows.length, 'with activity in ' + p.label) + kpi('Highest score', best ? Math.round(best.scaled * 100) : '-', best ? esc(best.name) : '&nbsp;') + kpi('Weight measured here', '80%', 'the other 20% is scored by the team in the KRA sheet');
+  document.getElementById('kra-sc-title').textContent = 'Scorecard — ' + p.label + (p.current ? ' (so far)' : '');
+  document.getElementById('kra-sc-note').innerHTML = 'Each cell is the Actual Achievement for that KRA, as in the KRA sheet. <strong>Weighted</strong> is out of the 80% measured here; <strong>Score</strong> scales it to 100 so people can be compared. Hover over a KRA heading for how it is measured.' + (p.current ? ' This ' + word + ' is not over yet.' : '') + ' Unfilled and open requirements come from today\'s Open Requirements sheet, so they are as of today for past periods.';
+  document.getElementById('kra-sc-table').innerHTML = rows.length ? '<thead><tr><th>Person</th>' + K.map(k => '<th title="' + esc(k.how + '. Target ' + k.target + ', weight ' + Math.round(k.w * 100) + '%') + '" style="cursor:help">' + esc(k.name.split(' /')[0].replace(' & Channel Effectiveness', '').replace(' Ratio', '')) + ' <span style="font-weight:400">(' + Math.round(k.w * 100) + '%)</span></th>').join('') + '<th>Weighted (of 80%)</th><th>Score</th><th>Previous ' + word + '</th></tr></thead><tbody>' +
+    rows.map(r => { const q = pm[r.name], d = q && q.scaled !== null && r.scaled !== null ? Math.round(r.scaled * 100) - Math.round(q.scaled * 100) : null;
+      return '<tr><td><a style="cursor:pointer;color:#0D3133;font-weight:700;text-decoration:underline" onclick="kraPick(\'' + esc(r.name).replace(/'/g, "\\'") + '\')">' + esc(r.name) + '</a></td>' + K.map(k => '<td title="' + esc(r.n[k.id]) + '"><strong>' + pc(r.v[k.id]) + '</strong><div style="font-size:.68rem;color:#888;white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis">' + esc(r.n[k.id].split(';')[0]) + '</div></td>').join('') +
+        '<td>' + (r.covered ? (r.weighted * 100).toFixed(1) + '%' : '-') + '</td><td><strong style="font-size:.95rem">' + (r.scaled === null ? '-' : Math.round(r.scaled * 100)) + '</strong></td><td>' + (q && q.scaled !== null ? Math.round(q.scaled * 100) + (d ? ' <span style="color:' + (d > 0 ? '#107C10' : '#D13438') + '">(' + (d > 0 ? '+' : '−') + Math.abs(d) + ')</span>' : '') : '-') + '</td></tr>'; }).join('') + '</tbody>'
+    : '<tbody><tr><td style="color:#999;padding:14px">No recruiter activity in ' + esc(p.label) + '.</td></tr></tbody>';
+  // trend
+  const six = per.slice(idx, idx + 6).reverse(), res = six.map(q => kraCompute(q, method)), names = [...new Set(res.flatMap(r => r.map(x => x.name)))].sort();
+  document.getElementById('kra-tr-title').textContent = 'Score trend, last ' + six.length + ' ' + word + (six.length === 1 ? '' : 's');
+  const shade = v => v === null ? 'color:#bbb' : 'background:rgba(13,49,51,' + (0.06 + 0.55 * v).toFixed(2) + ');color:' + (v > 0.65 ? '#fff' : '#0D3133') + ';font-weight:700';
+  document.getElementById('kra-tr-table').innerHTML = '<thead><tr><th>Person</th>' + six.map(q => '<th style="text-align:center">' + esc(q.short) + '</th>').join('') + '</tr></thead><tbody>' + names.map(n => '<tr><td><strong>' + esc(n) + '</strong></td>' + res.map(r => { const x = r.find(y => y.name === n), v = x ? x.scaled : null; return '<td style="text-align:center;' + shade(v) + '">' + (v === null ? '-' : Math.round(v * 100)) + '</td>'; }).join('') + '</tr>').join('') + '</tbody>';
+  const ps = document.getElementById('kra-person'), keep = ps.value; ps.innerHTML = ''; rows.forEach(r => { const o = document.createElement('option'); o.value = r.name; o.textContent = r.name; ps.appendChild(o); }); if (rows.some(r => r.name === keep)) ps.value = keep;
+  kraRenderPerson();
+}
+function kraPick(n) { const ps = document.getElementById('kra-person'); ps.value = n; kraRenderPerson(); document.getElementById('kra-pd-title').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+function kraRenderPerson() {
+  const t = document.getElementById('kra-pd-table'); if (!KRA_LAST) return;
+  const esc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const r = KRA_LAST.rows.find(x => x.name === document.getElementById('kra-person').value);
+  document.getElementById('kra-pd-title').textContent = 'Person detail' + (r ? ' — ' + r.name + ', ' + KRA_LAST.p.label : '');
+  if (!r) { t.innerHTML = ''; return; }
+  t.innerHTML = '<thead><tr><th>KRA</th><th>Target</th><th>Weight</th><th>How it is measured</th><th>The numbers</th><th>Actual achievement</th><th>Weighted score</th></tr></thead><tbody>' +
+    KRA_DEF.ta.map(k => { const v = k.manual ? null : r.v[k.id]; return '<tr' + (k.manual ? ' style="color:#888"' : '') + '><td><strong>' + esc(k.name) + '</strong></td><td>' + esc(k.target) + '</td><td>' + Math.round(k.w * 100) + '%</td><td style="white-space:normal;min-width:220px">' + esc(k.how) + '</td><td style="white-space:normal;min-width:200px">' + (k.manual ? 'In the KRA sheet' : esc(r.n[k.id])) + '</td><td><strong>' + (v === null || v === undefined ? '-' : (v * 100).toFixed(1) + '%') + '</strong></td><td>' + (v === null || v === undefined ? '-' : (k.w * v * 100).toFixed(1) + '%') + '</td></tr>'; }).join('') +
+    '<tr style="border-top:2px solid #0D3133;background:#F5F4F2"><td colspan="5"><strong>Total on the KRAs measured here</strong> (' + Math.round(r.covered * 100) + '% of the weight)</td><td><strong>Score ' + (r.scaled === null ? '-' : Math.round(r.scaled * 100)) + '</strong></td><td><strong>' + (r.weighted * 100).toFixed(1) + '%</strong></td></tr></tbody>';
+}
+function kraCopy() {
+  const st = document.getElementById('kra-copy-status'); if (!KRA_LAST) return;
+  const r = KRA_LAST.rows.find(x => x.name === document.getElementById('kra-person').value); if (!r) return;
+  const txt = KRA_DEF.ta.map(k => { const v = k.manual ? null : r.v[k.id]; return v === null || v === undefined ? '' : (v * 100).toFixed(1) + '%'; }).join('\n');
+  const done = () => { st.textContent = 'Copied ' + r.name + '\'s scores. Paste into the first grey cell of the Actual Achievement column.'; };
+  try { navigator.clipboard.writeText(txt).then(done, () => { kraCopyFallback(txt); done(); }); } catch (e) { kraCopyFallback(txt); done(); }
+}
+function kraCopyFallback(txt) { const ta = document.createElement('textarea'); ta.value = txt; ta.style.cssText = 'position:fixed;left:-9999px'; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch (e) {} document.body.removeChild(ta); }
+
+// ═════════ QUARTERLY HR PULSE SURVEY (LEADERSHIP) ═════════
+// Read live from the Microsoft Forms responses workbook on OneDrive. Only answers are used: the name, email and
+// employee ID columns are never read. Departments with fewer than 3 responses are not shown on their own.
+const PULSE_URL = 'https://adamsbridgenet-my.sharepoint.com/:x:/g/personal/bharathkumar_mayakrishnan_adamsbridge_com/IQBypn6_SqEMSqwDKgXCc4bOAeiEUhR6kulPmU5TW1wFAhw?e=j7bugJ';
+const PULSE_MIN_GROUP = 3;
+let PULSE_ROWS = null, PULSE_LOADING = false;
+const PULSE_SAT = ['Very dissatisfied', 'Somewhat dissatisfied', 'Neither satisfied nor dissatisfied', 'Somewhat satisfied', 'Very satisfied'];
+const PULSE_TEAMS = [['HRBP', 'HRBP'], ['HR ECD', 'HR ECD (Employee Care)'], ['Talent Acquisition', 'Talent Acquisition'], ['HR Ops & Payroll', 'HR Ops & Payroll'], ['Admin', 'Admin & Facilities']];
+const PULSE_ITEMS = [
+  ['Talent Acquisition', ['Open positions are closed on time', 'The right set of candidates is shared', 'The quality of profiles shared is good', 'I am kept updated on the status of my open positions']],
+  ['HR Ops & Payroll', ['Payroll is processed accurately and on time', 'Payroll queries from my team are handled well', 'Payslip, tax and statutory communication is clear', 'New joiners are onboarded smoothly', 'Employee confirmations are completed on time', 'HR policies and processes are clear']],
+  ['Admin & Facilities', ['Workspace and seating', 'Housekeeping and washroom cleanliness', 'Cafeteria and pantry', 'Transport and cab services', 'Maintenance (AC, power, lighting)', 'Admin requests are responded to quickly']]
+];
+const PULSE_CONN = ['HRBP & BU Heads', 'HRBP & Managers', 'ECD & BU Heads', 'ECD & Managers', 'ECD & Employees'];
+const PULSE_FREQ = ['Daily', 'Weekly', 'Fortnightly', 'Monthly', 'Rarely', 'Never'];
+const PULSE_COMMENTS = [['What is the main reason for your score', 'Main reason for the HR score'], ['HRBP one thing', 'HRBP: going well or to improve'], ['HR ECD one thing', 'HR ECD: going well or to improve'], ['Talent Acquisition –', 'Talent Acquisition: going well or to improve'], ['HR Payroll & HR Operations –', 'HR Ops & Payroll: going well or to improve'], ['Admin and Facilities –', 'Admin & Facilities: going well or to improve'], ['Is there any update or report', 'Updates or reports leaders would like from HR'], ['What is one thing I should start', 'VP HR: start, stop or continue']];
+function pulseDept(d) {
+  let t = String(d || '').trim().replace(/\s+/g, ' '); if (!t) return 'Other';
+  if (/^(coe|cent(er|re) of excellence|coe - cent(er|re) of excellence)$/i.test(t) || /cent(er|re) of excellence/i.test(t)) return 'Centre of Excellence';
+  if (/^accounting( team)?$/i.test(t)) return 'Accounting';
+  if (/^medical records collection$/i.test(t)) return 'MRC';
+  if (/^business excell?[ae]nce$/i.test(t)) return 'Business Excellence';
+  return t.replace(/\b\w/g, ch => ch.toUpperCase()).replace(/\bAnd\b/g, 'and').replace(/\bMrc\b/, 'MRC').replace(/\bIt\b/, 'IT').replace(/\bMis\b/, 'MIS').replace(/\bFp&a\b/i, 'FP&A');
+}
+async function pulseLoad(force) {
+  const st = document.getElementById('pulse-status');
+  if (PULSE_LOADING || (PULSE_ROWS && !force)) { pulseRender(); return; }
+  PULSE_LOADING = true; if (st) st.textContent = 'Loading the survey responses…';
+  try {
+    const token = await getToken(), id = nlShareId(PULSE_URL);
+    const meta = await nlGet('https://graph.microsoft.com/v1.0/shares/' + id + '/driveItem?$select=id,name,parentReference', token);
+    const base = (meta.parentReference && meta.parentReference.driveId) ? 'https://graph.microsoft.com/v1.0/drives/' + meta.parentReference.driveId + '/items/' + meta.id : 'https://graph.microsoft.com/v1.0/shares/' + id + '/driveItem';
+    const sheets = await nlGet(base + '/workbook/worksheets?$select=name,position', token);
+    const ws = (sheets.value || []).sort((a, b) => a.position - b.position)[0];
+    const vals = (await nlGet(base + "/workbook/worksheets('" + encodeURIComponent(ws.name) + "')/usedRange(valuesOnly=true)?$select=values", token)).values || [];
+    PULSE_ROWS = pulseParse(vals);
+    if (st) st.textContent = PULSE_ROWS.length + ' responses loaded from ' + (meta.name || 'the survey file') + '.';
+  } catch (e) {
+    console.error('Pulse survey load failed', e);
+    if (st) st.textContent = 'The survey file could not be read (' + e.message + '). Check that you can open the file in OneDrive, then press Refresh.';
+  } finally { PULSE_LOADING = false; }
+  pulseRender();
+}
+function pulseParse(vals) {
+  if (!vals || vals.length < 2) return [];
+  const H = vals[0].map(h => String(h || '').trim()), low = H.map(h => h.toLowerCase());
+  const col = (txt, exact) => { const t = txt.toLowerCase(); let i = low.findIndex(h => h === t); if (i < 0 && !exact) i = low.findIndex(h => h.startsWith(t)); if (i < 0 && !exact) i = low.findIndex(h => h.includes(t)); return i; };
+  const C = { done: col('Completion time'), dept: col('Department', true), nps: col('scale of 1 to 10'), me: col('Overall, how satisfied are you with the inputs and support'), upd: col('Do you receive regular HR updates'),
+    kHRBP: col('HRBP2', true), kECD: col('ECD', true) };
+  const sat = PULSE_TEAMS.map(t => col(t[0], true)), items = PULSE_ITEMS.map(g => g[1].map(q => col(q))), conn = PULSE_CONN.map(c => col(c, true)), com = PULSE_COMMENTS.map(c => col(c[0]));
+  const num = v => { if (typeof v === 'number') return v; const n = parseFloat(String(v || '').trim()); return isNaN(n) ? null : n; };
+  const txt = v => String(v == null ? '' : v).trim();
+  const date = v => { if (typeof v === 'number') return new Date(Math.round((v - 25569) * 864e5)); const d = new Date(v); return isNaN(d) ? null : d; };
+  return vals.slice(1).filter(r => r.some(c => c !== null && c !== '')).map(r => ({
+    done: C.done >= 0 ? date(r[C.done]) : null, dept: pulseDept(C.dept >= 0 ? r[C.dept] : ''), nps: C.nps >= 0 ? num(r[C.nps]) : null, me: C.me >= 0 ? num(r[C.me]) : null, upd: C.upd >= 0 ? txt(r[C.upd]) : '',
+    kHRBP: C.kHRBP >= 0 ? txt(r[C.kHRBP]) : '', kECD: C.kECD >= 0 ? txt(r[C.kECD]) : '',
+    sat: sat.map(i => i >= 0 ? txt(r[i]) : ''), items: items.map(g => g.map(i => i >= 0 ? num(r[i]) : null)), conn: conn.map(i => i >= 0 ? txt(r[i]) : ''),
+    com: com.map(i => i >= 0 ? txt(r[i]) : '')
+  }));
+}
+function pulseQuarter(d) { if (!d) return ''; const m = d.getMonth(), y = m >= 3 ? d.getFullYear() : d.getFullYear() - 1, q = Math.floor(((m - 3 + 12) % 12) / 3) + 1; return y * 10 + q; }
+function pulseQLabel(k) { const y = Math.floor(k / 10), q = k % 10, m0 = (3 + (q - 1) * 3) % 12, yy = q === 4 ? y + 1 : y; return 'Q' + q + ' FY ' + y + '-' + String(y + 1).slice(2) + ' (' + KRA_MON[m0] + '–' + KRA_MON[(m0 + 2) % 12] + ' ' + yy + ')'; }
+function pulseRender() {
+  const body = document.getElementById('pulse-body'); if (!body) return;
+  if (!PULSE_ROWS) { if (!PULSE_LOADING) pulseLoad(); return; }
+  if (!PULSE_ROWS.length) { body.style.display = 'none'; return; }
+  body.style.display = '';
+  const esc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const qs = document.getElementById('pulse-q'), ds = document.getElementById('pulse-dept');
+  const quarters = [...new Set(PULSE_ROWS.map(r => pulseQuarter(r.done)).filter(Boolean))].sort((a, b) => b - a);
+  if (qs.options.length !== quarters.length + 1) { const keep = qs.value; qs.innerHTML = ''; quarters.forEach(k => { const o = document.createElement('option'); o.value = k; o.textContent = pulseQLabel(k); qs.appendChild(o); }); const o = document.createElement('option'); o.value = 'all'; o.textContent = 'All quarters'; qs.appendChild(o); if (keep && [...qs.options].some(x => x.value === keep)) qs.value = keep; }
+  const qk = qs.value, inQ = r => qk === 'all' || String(pulseQuarter(r.done)) === qk;
+  const qRows = PULSE_ROWS.filter(inQ), cnt = {}; qRows.forEach(r => cnt[r.dept] = (cnt[r.dept] || 0) + 1);
+  const bigDepts = Object.keys(cnt).filter(d => cnt[d] >= PULSE_MIN_GROUP).sort();
+  const keepD = ds.value; ds.innerHTML = '<option value="">All departments</option>' + bigDepts.map(d => '<option value="' + esc(d) + '">' + esc(d) + ' (' + cnt[d] + ')</option>').join(''); if (bigDepts.includes(keepD)) ds.value = keepD;
+  const dept = ds.value, rows = qRows.filter(r => !dept || r.dept === dept);
+  const prevK = qk !== 'all' ? quarters[quarters.indexOf(Number(qk)) + 1] : null, prevRows = prevK ? PULSE_ROWS.filter(r => pulseQuarter(r.done) === prevK && (!dept || r.dept === dept)) : [];
+  const nps = rs => { const v = rs.map(r => r.nps).filter(x => x !== null); if (!v.length) return null; const pr = v.filter(x => x >= 9).length, de = v.filter(x => x <= 6).length; return { n: v.length, pr, pa: v.length - pr - de, de, score: Math.round((pr - de) / v.length * 100), avg: v.reduce((a, b) => a + b, 0) / v.length }; };
+  const N = nps(rows), PN = nps(prevRows), me = rows.map(r => r.me).filter(x => x !== null), pme = prevRows.map(r => r.me).filter(x => x !== null);
+  const avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null, fav = a => a.length ? Math.round(a.filter(x => x >= 4).length / a.length * 100) : null;
+  const delta = (a, b, dec) => a === null || b === null ? '' : (Math.abs(a - b) < (dec ? 0.05 : 0.5) ? ' · same as last quarter' : ' · ' + (a > b ? '+' : '−') + Math.abs(a - b).toFixed(dec || 0) + ' vs last quarter');
+  const sgn = v => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v);
+  document.getElementById('pulse-kstrip').innerHTML = kpi('Leaders who responded', rows.length, dept ? esc(dept) : (qk === 'all' ? 'all quarters' : pulseQLabel(Number(qk)))) +
+    kpi('HR score (NPS style)', N ? sgn(N.score) : '-', N ? N.pr + ' promoters (9–10), ' + N.pa + ' neutral (7–8), ' + N.de + ' detractors (1–6)' + delta(N.score, PN ? PN.score : null) : '&nbsp;') +
+    kpi('Average rating of HR', N ? N.avg.toFixed(1) + ' / 10' : '-', 'on "how would you rate HR\'s support"' + (N && PN ? delta(N.avg, PN.avg, 1) : '')) +
+    kpi('Support from VP HR', me.length ? avg(me).toFixed(1) + ' / 5' : '-', me.length ? fav(me) + '% rated 4 or 5' + delta(avg(me), pme.length ? avg(pme) : null, 1) : '&nbsp;');
+  // satisfaction by team
+  const satCnt = PULSE_TEAMS.map((t, i) => PULSE_SAT.map(s => rows.filter(r => (r.sat[i] || '').toLowerCase() === s.toLowerCase()).length));
+  const cols = ['#B3261E', '#E8A598', '#C9CFCC', '#7FA9A6', '#0D3133'];
+  try {
+    if (CHARTS['pulse-sat-chart']) CHARTS['pulse-sat-chart'].destroy();
+    CHARTS['pulse-sat-chart'] = new Chart(document.getElementById('pulse-sat-chart'), { type: 'bar', data: { labels: PULSE_TEAMS.map(t => t[1]), datasets: PULSE_SAT.map((s, j) => ({ label: s, data: satCnt.map(c => { const tot = c.reduce((a, b) => a + b, 0); return tot ? Math.round(c[j] / tot * 100) : 0; }), backgroundColor: cols[j] })) },
+      options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true, max: 100, ticks: { callback: v => v + '%' } }, y: { stacked: true } }, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } }, datalabels: { color: (c) => c.datasetIndex >= 3 || c.datasetIndex === 0 ? '#fff' : '#0D3133', font: { size: 10, weight: '700' }, formatter: v => v >= 6 ? v + '%' : '' }, tooltip: { callbacks: { label: c => c.dataset.label + ': ' + c.raw + '%' } } } } });
+  } catch (e) { console.error('pulse chart failed', e); }
+  const prevSat = PULSE_TEAMS.map((t, i) => { const v = prevRows.map(r => PULSE_SAT.findIndex(s => s.toLowerCase() === (r.sat[i] || '').toLowerCase()) + 1).filter(x => x > 0); return v.length ? Math.round(v.filter(x => x >= 4).length / v.length * 100) : null; });
+  document.getElementById('pulse-sat-table').innerHTML = '<thead><tr><th>HR team</th><th>Satisfied</th><th>Neutral</th><th>Dissatisfied</th><th>Average (of 5)</th><th>Answers</th>' + (prevRows.length ? '<th>Satisfied last quarter</th>' : '') + '</tr></thead><tbody>' +
+    PULSE_TEAMS.map((t, i) => { const c = satCnt[i], tot = c.reduce((a, b) => a + b, 0), s = c[3] + c[4], d = c[0] + c[1], a = tot ? c.reduce((x, y, j) => x + y * (j + 1), 0) / tot : null; return '<tr><td><strong>' + t[1] + '</strong></td><td><strong>' + (tot ? Math.round(s / tot * 100) + '%' : '-') + '</strong></td><td>' + (tot ? Math.round(c[2] / tot * 100) + '%' : '-') + '</td><td>' + (tot ? Math.round(d / tot * 100) + '%' : '-') + '</td><td>' + (a === null ? '-' : a.toFixed(1)) + '</td><td>' + tot + '</td>' + (prevRows.length ? '<td>' + (prevSat[i] === null ? '-' : prevSat[i] + '%') + '</td>' : '') + '</tr>'; }).join('') + '</tbody>';
+  // detailed ratings
+  const bar = (v, mx) => '<div style="background:#EEF0EF;border-radius:3px;height:8px;width:110px;display:inline-block;vertical-align:middle;margin-right:6px"><div style="width:' + Math.round(v / mx * 100) + '%;height:8px;border-radius:3px;background:' + (v >= 4 ? '#0D3133' : v >= 3.5 ? '#7FA9A6' : '#E69F50') + '"></div></div>';
+  let ih = '<thead><tr><th>Statement</th><th>Average (of 5)</th><th>Rated 4 or 5</th><th>Rated 1 or 2</th><th>Answers</th></tr></thead><tbody>';
+  PULSE_ITEMS.forEach((g, gi) => { ih += '<tr style="background:#F5F4F2"><td colspan="5"><strong>' + g[0] + '</strong></td></tr>'; g[1].forEach((q, qi) => { const v = rows.map(r => r.items[gi][qi]).filter(x => x !== null && x >= 1 && x <= 5); const a = avg(v); ih += '<tr><td>' + esc(q) + '</td><td>' + (a === null ? '-' : bar(a, 5) + '<strong>' + a.toFixed(1) + '</strong>') + '</td><td>' + (v.length ? fav(v) + '%' : '-') + '</td><td>' + (v.length ? Math.round(v.filter(x => x <= 2).length / v.length * 100) + '%' : '-') + '</td><td>' + v.length + '</td></tr>'; }); });
+  { const v = me; ih += '<tr style="background:#F5F4F2"><td colspan="5"><strong>VP HR</strong></td></tr><tr><td>Overall support and inputs from VP HR</td><td>' + (v.length ? bar(avg(v), 5) + '<strong>' + avg(v).toFixed(1) + '</strong>' : '-') + '</td><td>' + (v.length ? fav(v) + '%' : '-') + '</td><td>' + (v.length ? Math.round(v.filter(x => x <= 2).length / v.length * 100) + '%' : '-') + '</td><td>' + v.length + '</td></tr>'; }
+  document.getElementById('pulse-items-table').innerHTML = ih + '</tbody>';
+  // know + updates
+  const dist = (vals, order) => { const m = {}; vals.filter(Boolean).forEach(v => m[v] = (m[v] || 0) + 1); const keys = order ? order.filter(k => m[k]).concat(Object.keys(m).filter(k => !order.includes(k))) : Object.keys(m).sort((a, b) => m[b] - m[a]); const tot = vals.filter(Boolean).length; return keys.map(k => [k, m[k], tot ? Math.round(m[k] / tot * 100) : 0]); };
+  const KO = ['Yes, most of them', 'Some of them', 'Very few', 'None', 'Not Sure'];
+  const kh = dist(rows.map(r => r.kHRBP), KO), ke = dist(rows.map(r => r.kECD), KO), kk = [...new Set(kh.map(x => x[0]).concat(ke.map(x => x[0])))];
+  document.getElementById('pulse-know-table').innerHTML = '<thead><tr><th>Answer</th><th>Know their HRBP</th><th>Know their ECD</th></tr></thead><tbody>' + kk.map(k => { const a = kh.find(x => x[0] === k), b = ke.find(x => x[0] === k); return '<tr><td>' + esc(k) + '</td><td>' + (a ? a[2] + '% <span style="color:#888">(' + a[1] + ')</span>' : '-') + '</td><td>' + (b ? b[2] + '% <span style="color:#888">(' + b[1] + ')</span>' : '-') + '</td></tr>'; }).join('') + '</tbody>';
+  const ud = dist(rows.map(r => r.upd), ['Yes, regularly', 'Sometimes', 'Rarely', 'No Updates at all']);
+  document.getElementById('pulse-upd-table').innerHTML = '<thead><tr><th>Answer</th><th>Leaders</th><th>Share</th></tr></thead><tbody>' + ud.map(x => '<tr><td>' + esc(x[0]) + '</td><td>' + x[1] + '</td><td><strong>' + x[2] + '%</strong></td></tr>').join('') + '</tbody>';
+  // connect frequency
+  const heat = v => 'background:rgba(13,49,51,' + (0.05 + v / 100 * 0.8).toFixed(2) + ');color:' + (v >= 45 ? '#fff' : '#0D3133') + ';text-align:center;font-weight:700';
+  document.getElementById('pulse-conn-table').innerHTML = '<thead><tr><th>Who connects with whom</th>' + PULSE_FREQ.map(f => '<th style="text-align:center">' + f + '</th>').join('') + '<th style="text-align:center">Monthly or more often</th></tr></thead><tbody>' +
+    PULSE_CONN.map((c, i) => { const v = rows.map(r => r.conn[i]).filter(Boolean), tot = v.length; const pcs = PULSE_FREQ.map(f => tot ? Math.round(v.filter(x => x.toLowerCase() === f.toLowerCase()).length / tot * 100) : 0); const often = pcs.slice(0, 4).reduce((a, b) => a + b, 0); return '<tr><td><strong>' + esc(c.replace('&', 'and')) + '</strong></td>' + pcs.map(p => '<td style="' + heat(p) + '">' + (p ? p + '%' : '-') + '</td>').join('') + '<td style="text-align:center"><strong>' + often + '%</strong></td></tr>'; }).join('') + '</tbody>';
+  // by department
+  const dRows = Object.keys(cnt).filter(d => cnt[d] >= PULSE_MIN_GROUP).sort((a, b) => cnt[b] - cnt[a]), small = Object.keys(cnt).filter(d => cnt[d] < PULSE_MIN_GROUP);
+  const satPct = (rs, i) => { const v = rs.map(r => PULSE_SAT.findIndex(s => s.toLowerCase() === (r.sat[i] || '').toLowerCase()) + 1).filter(x => x > 0); return v.length ? Math.round(v.filter(x => x >= 4).length / v.length * 100) + '%' : '-'; };
+  const drow = (label, rs) => { const n = nps(rs); return '<tr><td><strong>' + esc(label) + '</strong></td><td>' + rs.length + '</td><td>' + (n ? n.avg.toFixed(1) : '-') + '</td><td>' + (n ? sgn(n.score) : '-') + '</td>' + PULSE_TEAMS.map((t, i) => '<td>' + satPct(rs, i) + '</td>').join('') + '</tr>'; };
+  const smallRows = qRows.filter(r => small.includes(r.dept));
+  document.getElementById('pulse-dept-note').textContent = 'HR score per department, and the share satisfied with each HR team. ' + (small.length ? small.length + ' departments with fewer than ' + PULSE_MIN_GROUP + ' responses are combined into one row so no one can be identified.' : '');
+  document.getElementById('pulse-dept-table').innerHTML = '<thead><tr><th>Department</th><th>Responses</th><th>Average (of 10)</th><th>HR score</th>' + PULSE_TEAMS.map(t => '<th>' + t[1].replace(' (Employee Care)', '') + ' satisfied</th>').join('') + '</tr></thead><tbody>' + dRows.map(d => drow(d, qRows.filter(r => r.dept === d))).join('') + (smallRows.length >= PULSE_MIN_GROUP ? drow('Other departments (' + small.length + ')', smallRows) : '') + '<tr style="border-top:2px solid #0D3133;background:#F5F4F2">' + drow('All departments', qRows).slice(4) + '</tbody>';
+  // comments
+  const cq = document.getElementById('pulse-cq'); if (!cq.options.length) PULSE_COMMENTS.forEach((c, i) => { const o = document.createElement('option'); o.value = i; o.textContent = c[1]; cq.appendChild(o); });
+  PULSE_VIEW = rows; pulseRenderComments();
+}
+let PULSE_VIEW = [];
+function pulseRenderComments() {
+  const i = parseInt(document.getElementById('pulse-cq').value || '0'), esc = v => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/\n/g, '<br>');
+  const list = PULSE_VIEW.map(r => r.com[i]).filter(t => t && t.replace(/[\s.\-]/g, '').length > 2 && !/^(na|n\/a|nil|none|no|nothing|not applicable|no comments?)\.?$/i.test(t.trim()));
+  document.getElementById('pulse-c-note').textContent = list.length + ' of ' + PULSE_VIEW.length + ' leaders wrote something for this question. Shown as written, without names.';
+  document.getElementById('pulse-comments').innerHTML = list.length ? list.map(t => '<div style="border-left:3px solid #E69F50;background:#FAFBFA;padding:8px 12px;margin-bottom:8px;font-size:.82rem;line-height:1.5;border-radius:0 6px 6px 0">' + esc(t) + '</div>').join('') : '<div style="color:#999;font-size:.82rem">No written answers for this question in this selection.</div>';
+}
+
 function repDownload(previewId, key, statusId) {
   const statusEl = document.getElementById(statusId); if (statusEl) statusEl.textContent = 'Generating PDF…';
   const source = document.querySelector('#' + previewId + ' > div');
@@ -7174,6 +7546,7 @@ function renderAll() {
   renderAttrition();
   renderInsights();
   renderTalentAcquisition();
+  try { if (document.getElementById('pkra').classList.contains('on')) kraRender(); } catch (e) { console.error('KRA view failed', e); }
   renderAttentionSummary();
   renderBuHeadViews();
   renderOrgChart();
