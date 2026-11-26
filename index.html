@@ -1890,6 +1890,7 @@ async function loadTalentAcquisitionData(token) {
       while (n > 0) { const rem = (n-1) % 26; s = String.fromCharCode(65+rem) + s; n = Math.floor((n-1)/26); }
       return s;
     };
+    const letterToCol = (L) => String(L).split('').reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0);
 
     // Fetches a sheet's full used range. Tries the simple, single-call
     // usedRange request first — fast, and works fine for smaller sheets
@@ -1903,45 +1904,35 @@ async function loadTalentAcquisitionData(token) {
     // in row-chunks small enough to stay under the limit, and concatenates
     // them into the same shape the rest of this function already expects —
     // so nothing downstream needs to know a fallback happened at all.
+    // Every request has a time limit, so a slow or stuck call can never leave the dashboard on the loading screen.
+    const gfetch = async (url, ms) => { const ac = new AbortController(), t = setTimeout(() => ac.abort(), ms || 45000); try { return await fetch(url, { headers: { Authorization: 'Bearer ' + token }, signal: ac.signal }); } finally { clearTimeout(t); } };
     const fetchSheet = async (sheetNameLower) => {
       const sheet = wsData.value.find(s => String(s.name||'').trim().toLowerCase() === sheetNameLower);
       if (!sheet) { console.warn(`TA: sheet matching "${sheetNameLower}" not found in workbook.`); return []; }
       const baseUrl = `https://graph.microsoft.com/v1.0/users/${OWNER_UPN}/drive/items/${TA_FILE_ID}/workbook/worksheets('${encodeURIComponent(sheet.name)}')`;
-
-      const res = await fetch(`${baseUrl}/usedRange?$select=values`, { headers: { Authorization: 'Bearer ' + token } });
-      if (res.ok) { const data = await res.json(); return data.values || []; }
-
-      console.warn(`TA: single-request usedRange failed for "${sheet.name}" (HTTP ${res.status}) — falling back to chunked fetch for large sheets.`);
+      // valuesOnly leaves out formatting, so the response is far smaller and large sheets usually come back in one call.
+      try { const res = await gfetch(`${baseUrl}/usedRange(valuesOnly=true)?$select=values`); if (res.ok) { const data = await res.json(); return data.values || []; } console.warn(`TA: "${sheet.name}" in one request failed (HTTP ${res.status}) — reading it in parts.`); }
+      catch (e) { console.warn(`TA: "${sheet.name}" in one request did not finish (${e.name === 'AbortError' ? 'timed out' : e.message}) — reading it in parts.`); }
       try {
-        const addrRes = await fetch(`${baseUrl}/usedRange?$select=address,rowCount,columnCount`, { headers: { Authorization: 'Bearer ' + token } });
-        if (!addrRes.ok) { console.warn(`TA: could not even read range metadata for "${sheet.name}". HTTP ${addrRes.status}`); return []; }
-        const addrData = await addrRes.json();
-        const totalRows = addrData.rowCount;
-        const totalCols = addrData.columnCount;
-        if (!totalRows || !totalCols) { console.warn(`TA: range metadata for "${sheet.name}" had no usable row/column count.`); return []; }
-        const lastColLetter = colToLetter(totalCols);
-
-        const CHUNK_SIZE = 150; // rows per request — conservative, well under the limit that broke a 531-row x 51-column sheet
-        let allValues = [];
-        for (let startRow = 1; startRow <= totalRows; startRow += CHUNK_SIZE) {
-          const endRow = Math.min(startRow + CHUNK_SIZE - 1, totalRows);
-          const address = `A${startRow}:${lastColLetter}${endRow}`;
-          const chunkRes = await fetch(`${baseUrl}/range(address='${address}')?$select=values`, { headers: { Authorization: 'Bearer ' + token } });
-          if (!chunkRes.ok) { console.warn(`TA: chunked fetch failed for "${sheet.name}" on rows ${startRow}-${endRow} (HTTP ${chunkRes.status}).`); return []; }
-          const chunkData = await chunkRes.json();
-          allValues = allValues.concat(chunkData.values || []);
-        }
-        console.warn(`TA: chunked fetch succeeded for "${sheet.name}" — ${allValues.length} rows across ${Math.ceil(totalRows/CHUNK_SIZE)} requests.`);
-        return allValues;
-      } catch (chunkErr) {
-        console.warn(`TA: chunked fallback threw for "${sheet.name}": ${chunkErr.message}`);
-        return [];
-      }
+        const addrRes = await gfetch(`${baseUrl}/usedRange(valuesOnly=true)?$select=address,rowCount,columnCount`);
+        if (!addrRes.ok) { console.warn(`TA: could not read the size of "${sheet.name}" (HTTP ${addrRes.status}).`); return []; }
+        const a = await addrRes.json(), totalRows = a.rowCount, totalCols = a.columnCount;
+        if (!totalRows || !totalCols) return [];
+        const m = String(a.address || '').split('!').pop().split(':')[0].match(/^([A-Z]+)(\d+)$/);
+        const firstCol = m ? m[1] : 'A', firstRow = m ? parseInt(m[2]) : 1, lastCol = colToLetter((m ? letterToCol(firstCol) : 1) + totalCols - 1);
+        const CHUNK = 250, parts = [];
+        for (let r0 = 0; r0 < totalRows; r0 += CHUNK) parts.push([firstRow + r0, firstRow + Math.min(r0 + CHUNK, totalRows) - 1]);
+        // parts are fetched a few at a time instead of one after another
+        const out = new Array(parts.length); let next = 0;
+        const worker = async () => { while (next < parts.length) { const k = next++, [r1, r2] = parts[k]; const res = await gfetch(`${baseUrl}/range(address='${firstCol}${r1}:${lastCol}${r2}')?$select=values`); if (!res.ok) throw new Error(`rows ${r1}-${r2}: HTTP ${res.status}`); out[k] = (await res.json()).values || []; } };
+        await Promise.all([worker(), worker(), worker(), worker()]);
+        const all = [].concat(...out);
+        console.log(`TA: read "${sheet.name}" in ${parts.length} parts — ${all.length} rows.`);
+        return all;
+      } catch (e) { console.warn(`TA: reading "${sheet.name}" in parts failed: ${e.name === 'AbortError' ? 'timed out' : e.message}`); return []; }
     };
 
-    const baseRows = await fetchSheet('base sheet');
-    const openReqRows = await fetchSheet('open requirements');
-    const finalSelectRows = await fetchSheet('final select candidates sheet');
+    const [baseRows, openReqRows, finalSelectRows] = await Promise.all([fetchSheet('base sheet'), fetchSheet('open requirements'), fetchSheet('final select candidates sheet')]);
 
     // --- Base Sheet: header row detected by content, not assumed position ---
     if (baseRows.length >= 2) {
@@ -2527,7 +2518,8 @@ async function loadData() {
     // the main dashboard's own data has already succeeded. Awaited so its
     // data is ready before the first render, but any failure here is fully
     // contained inside loadTalentAcquisitionData's own try/catch.
-    await loadTalentAcquisitionData(token);
+    // The tracker gets at most 2 minutes; if it is not back by then the dashboard opens without it.
+    await Promise.race([loadTalentAcquisitionData(token), new Promise(res => setTimeout(() => { console.warn('TA: the recruitment tracker took longer than 2 minutes; opening the dashboard without it.'); res(); }, 120000))]);
 
     renderAll();
     // Survey loads in the background; the sections that use it redraw once it arrives.
