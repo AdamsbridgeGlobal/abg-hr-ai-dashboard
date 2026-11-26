@@ -7397,7 +7397,7 @@ function renderLiveInsights() {
 // ── AI INSIGHTS ─────────────────────────────────────────────
 // The browser never holds an AI key. It sends summarised numbers (no names, no individual
 // records) to Adamsbridge's own Azure service, which calls Azure OpenAI with a key kept on the server. Leave AI_ENDPOINT empty and the panel stays hidden.
-const AI_ENDPOINT = '/api/insights';   // same site: Azure Static Web Apps API. Set '' to switch AI off.
+const AI_ENDPOINT = '';   // set to '/api/insights' once IT hosts the AI service; empty = AI panel off, no call made   // same site: Azure Static Web Apps API. Set '' to switch AI off.
 const AI_SCOPE    = '';   // leave empty: the signed-in Microsoft ID token is used. Set only for a separate Function app.
 async function aiInit() {
   const b = document.getElementById('hm-ai'); if (!b) return;
