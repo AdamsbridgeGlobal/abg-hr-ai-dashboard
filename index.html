@@ -394,64 +394,25 @@
 </div>
 
 <div class="pg" id="ppulse">
-  <div class="tab-banner"><strong>Quarterly HR pulse survey, leadership.</strong> how leaders rate HR's support, read live from the survey responses file on OneDrive. Choose the quarter and department. Respondents' names are hidden until you press Show names in the Respondents section; employee IDs are never used. Departments with fewer than 3 responses are marked, because their answers may point to the person who wrote them.</div>
+  <div class="tab-banner"><strong>Quarterly HR pulse survey, leadership.</strong> read live from the survey file on OneDrive. Everything is on this page; the HR team and department dropdowns narrow it down.</div>
   <div class="card"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
     <label class="kra-lab">Quarter:</label><select id="pulse-q" class="kra-sel" onchange="pulseRender()"></select>
+    <label class="kra-lab">HR team:</label><select id="pulse-team" class="kra-sel" onchange="pulseRender()">
+      <option value="all">All HR teams</option><option value="hrbp">HRBP</option><option value="ecd">HR ECD</option><option value="ta">Talent Acquisition</option><option value="ops">HR Ops &amp; Payroll</option><option value="admin">Admin &amp; Facilities</option><option value="vp">VP HR</option></select>
     <label class="kra-lab">Department:</label><select id="pulse-dept" class="kra-sel" onchange="pulseRender()"><option value="">All departments</option></select>
     <button onclick="pulseLoad(true)" style="padding:8px 16px;background:#fff;color:#0D3133;border:1.5px solid #73847B;border-radius:6px;font-family:inherit;font-weight:700;font-size:.82rem;cursor:pointer">Refresh</button>
     <span id="pulse-status" style="font-size:.78rem;color:#888"></span>
   </div></div>
   <div id="pulse-body" style="display:none">
+    <div id="pulse-small" style="margin:0 0 12px;padding:8px 12px;border-left:4px solid #E69F50;background:#FFF7EE;font-size:.8rem;border-radius:0 6px 6px 0;display:none"></div>
     <div class="kstrip" id="pulse-kstrip" style="grid-template-columns:repeat(4,1fr)"></div>
-    <div class="card" style="border-top:3px solid #E69F50">
-      <div class="ctitle">Feedback on Bharathkumar, VP HR</div>
-      <div class="note" style="margin:0 0 10px">"Overall, how satisfied are you with the inputs and support you get from Bharathkumar?" rated 1 to 5, and what leaders said he should start, stop or continue.</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
-        <div><div id="pulse-me-dist"></div><div class="scrollbox" style="margin-top:12px"><table class="dt" id="pulse-me-dept"></table></div></div>
-        <div><div style="font-size:.8rem;font-weight:700;color:#0D3133;margin-bottom:6px" id="pulse-me-cnote"></div><div id="pulse-me-comments" style="max-height:520px;overflow-y:auto;padding-right:4px"></div></div>
+    <div id="pulse-main"></div>
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+        <div class="ctitle" style="margin:0" id="pulse-resp-title">Who said what</div><span style="margin-left:auto"></span>
+        <button id="pulse-names-btn" onclick="PULSE_SHOW_NAMES=!PULSE_SHOW_NAMES;pulseRender()" style="padding:7px 14px;background:#0D3133;color:#fff;border:none;border-radius:6px;font-family:inherit;font-weight:700;font-size:.8rem;cursor:pointer">Show names</button>
       </div>
-    </div>
-    <div class="card">
-      <div class="ctitle">Satisfaction with each HR team</div>
-      <div class="note" style="margin:0 0 10px">How satisfied leaders are with each team's support. Average is on a 1 to 5 scale, where 5 is very satisfied.</div>
-      <div class="chwrap" style="height:240px"><canvas id="pulse-sat-chart" role="img" aria-label="Stacked bar chart of satisfaction with each HR team"></canvas></div>
-      <div class="scrollbox" style="margin-top:10px"><table class="dt" id="pulse-sat-table"></table></div>
-    </div>
-    <div class="card">
-      <div class="ctitle">Ratings on specific services</div>
-      <div class="note" style="margin:0 0 10px">Each statement was rated 1 to 5. "Not applicable" answers are left out of the averages.</div>
-      <div class="scrollbox"><table class="dt" id="pulse-items-table"></table></div>
-    </div>
-    <div class="grid2" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-      <div class="card"><div class="ctitle">Do team members know their HRBP and ECD?</div><div class="scrollbox"><table class="dt" id="pulse-know-table"></table></div></div>
-      <div class="card"><div class="ctitle">Regular HR updates for the department</div><div class="scrollbox"><table class="dt" id="pulse-upd-table"></table></div></div>
-    </div>
-    <div class="card">
-      <div class="ctitle">How often HRBP and ECD connect</div>
-      <div class="note" style="margin:0 0 10px">Share of leaders choosing each answer. The darker the cell, the more leaders chose it.</div>
-      <div class="scrollbox"><table class="dt" id="pulse-conn-table"></table></div>
-    </div>
-    <div class="card">
-      <div class="ctitle">By department</div>
-      <div class="note" style="margin:0 0 10px" id="pulse-dept-note"></div>
-      <div class="scrollbox"><table class="dt" id="pulse-dept-table"></table></div>
-    </div>
-    <div class="card">
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px">
-        <div class="ctitle" style="margin:0">Respondents</div><span style="margin-left:auto"></span>
-        <button id="pulse-names-btn" onclick="PULSE_SHOW_NAMES=!PULSE_SHOW_NAMES;pulseRender()" style="padding:8px 16px;background:#0D3133;color:#fff;border:none;border-radius:6px;font-family:inherit;font-weight:700;font-size:.82rem;cursor:pointer">Show names</button>
-      </div>
-      <div class="note" style="margin:0 0 10px" id="pulse-resp-note"></div>
       <div id="pulse-resp-groups"></div>
-      <div class="scrollbox" style="margin-top:10px"><table class="dt" id="pulse-resp-table"></table></div>
-    </div>
-    <div class="card">
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px">
-        <div class="ctitle" style="margin:0">What leaders said</div><span style="margin-left:auto"></span>
-        <label class="kra-lab">Question:</label><select id="pulse-cq" class="kra-sel" onchange="pulseRenderComments()"></select>
-      </div>
-      <div class="note" style="margin:0 0 10px" id="pulse-c-note"></div>
-      <div id="pulse-comments"></div>
     </div>
   </div>
 </div>
@@ -6055,95 +6016,94 @@ function pulseParse(vals) {
 }
 function pulseQuarter(d) { if (!d) return ''; const m = d.getMonth(), y = m >= 3 ? d.getFullYear() : d.getFullYear() - 1, q = Math.floor(((m - 3 + 12) % 12) / 3) + 1; return y * 10 + q; }
 function pulseQLabel(k) { const y = Math.floor(k / 10), q = k % 10, m0 = (3 + (q - 1) * 3) % 12, yy = q === 4 ? y + 1 : y; return 'Q' + q + ' FY ' + y + '-' + String(y + 1).slice(2) + ' (' + KRA_MON[m0] + '–' + KRA_MON[(m0 + 2) % 12] + ' ' + yy + ')'; }
+// Each HR team in the survey: its satisfaction question, its service statements, its comment question and,
+// for HRBP and ECD, the "do teams know them" and "how often do they connect" questions.
+const PULSE_TEAM_DEF = {
+  hrbp: { name: 'HRBP', sat: 0, know: 'kHRBP', conn: [0, 1], com: 1 },
+  ecd: { name: 'HR ECD', sat: 1, know: 'kECD', conn: [2, 3, 4], com: 2 },
+  ta: { name: 'Talent Acquisition', sat: 2, items: 0, com: 3 },
+  ops: { name: 'HR Ops & Payroll', sat: 3, items: 1, com: 4 },
+  admin: { name: 'Admin & Facilities', sat: 4, items: 2, com: 5 },
+  vp: { name: 'VP HR', vp: true, com: 7 }
+};
+const PULSE_LBL5 = ['Very dissatisfied', 'Dissatisfied', 'Neutral', 'Satisfied', 'Very satisfied'];
+const PULSE_COL5 = ['#B3261E', '#E8A598', '#C9CFCC', '#7FA9A6', '#0D3133'];
+function pulseScore(r, key) { const d = PULSE_TEAM_DEF[key]; if (d.vp) return r.me; const k = PULSE_SAT.findIndex(s => s.toLowerCase() === (r.sat[d.sat] || '').toLowerCase()); return k < 0 ? null : k + 1; }
 function pulseRender() {
   const body = document.getElementById('pulse-body'); if (!body) return;
   if (!PULSE_ROWS) { if (!PULSE_LOADING) pulseLoad(); return; }
   if (!PULSE_ROWS.length) { body.style.display = 'none'; return; }
   body.style.display = '';
   const esc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;');
-  const qs = document.getElementById('pulse-q'), ds = document.getElementById('pulse-dept');
+  const avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null, pct = (n, d) => d ? Math.round(n / d * 100) : null;
+  const satP = v => pct(v.filter(x => x >= 4).length, v.length), disP = v => pct(v.filter(x => x <= 2).length, v.length);
+  const band = p => p === null ? '#999' : p >= 80 ? '#107C10' : p >= 65 ? '#C27C0E' : '#D13438', bandBg = p => p === null ? '#F4F5F4' : p >= 80 ? '#E3F1E3' : p >= 65 ? '#FBEFD9' : '#F9E0DF';
+  const qs = document.getElementById('pulse-q'), ds = document.getElementById('pulse-dept'), team = document.getElementById('pulse-team').value;
   const quarters = [...new Set(PULSE_ROWS.map(r => pulseQuarter(r.done)).filter(Boolean))].sort((a, b) => b - a);
   if (qs.options.length !== quarters.length + 1) { const keep = qs.value; qs.innerHTML = ''; quarters.forEach(k => { const o = document.createElement('option'); o.value = k; o.textContent = pulseQLabel(k); qs.appendChild(o); }); const o = document.createElement('option'); o.value = 'all'; o.textContent = 'All quarters'; qs.appendChild(o); if (keep && [...qs.options].some(x => x.value === keep)) qs.value = keep; }
-  const qk = qs.value, inQ = r => qk === 'all' || String(pulseQuarter(r.done)) === qk;
-  const qRows = PULSE_ROWS.filter(inQ), cnt = {}; qRows.forEach(r => cnt[r.dept] = (cnt[r.dept] || 0) + 1);
-  const bigDepts = Object.keys(cnt).filter(d => cnt[d] >= PULSE_MIN_GROUP).sort();
+  const qk = qs.value, qRows = PULSE_ROWS.filter(r => qk === 'all' || String(pulseQuarter(r.done)) === qk);
+  const cnt = {}; qRows.forEach(r => cnt[r.dept] = (cnt[r.dept] || 0) + 1);
   const allDepts = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a] || a.localeCompare(b));
-  const keepD = ds.value; ds.innerHTML = '<option value="">All departments</option>' + allDepts.map(d => '<option value="' + esc(d) + '">' + esc(d) + ' (' + cnt[d] + (cnt[d] === 1 ? ' response' : ' responses') + (cnt[d] < PULSE_MIN_GROUP ? ', small group' : '') + ')</option>').join(''); if (allDepts.includes(keepD)) ds.value = keepD;
+  const keepD = ds.value; ds.innerHTML = '<option value="">All departments</option>' + allDepts.map(d => '<option value="' + esc(d) + '">' + esc(d) + ' (' + cnt[d] + ')</option>').join(''); if (allDepts.includes(keepD)) ds.value = keepD;
   const dept = ds.value, rows = qRows.filter(r => !dept || r.dept === dept);
-  { const sn = document.getElementById('pulse-small'); if (!sn) { const el = document.createElement('div'); el.id = 'pulse-small'; el.style.cssText = 'margin:0 0 12px;padding:8px 12px;border-left:4px solid #E69F50;background:#FFF7EE;font-size:.8rem;border-radius:0 6px 6px 0;display:none'; body.insertBefore(el, body.firstChild); }
-    const n = document.getElementById('pulse-small'); if (dept && cnt[dept] < PULSE_MIN_GROUP) { n.style.display = ''; n.textContent = dept + ' has ' + cnt[dept] + (cnt[dept] === 1 ? ' response' : ' responses') + ', so these results and comments may show who answered. Share with care.'; } else n.style.display = 'none'; }
   const prevK = qk !== 'all' ? quarters[quarters.indexOf(Number(qk)) + 1] : null, prevRows = prevK ? PULSE_ROWS.filter(r => pulseQuarter(r.done) === prevK && (!dept || r.dept === dept)) : [];
-  const nps = rs => { const v = rs.map(r => r.nps).filter(x => x !== null); if (!v.length) return null; const pr = v.filter(x => x >= 9).length, de = v.filter(x => x <= 6).length; return { n: v.length, pr, pa: v.length - pr - de, de, score: Math.round((pr - de) / v.length * 100), avg: v.reduce((a, b) => a + b, 0) / v.length }; };
-  const N = nps(rows), PN = nps(prevRows), me = rows.map(r => r.me).filter(x => x !== null), pme = prevRows.map(r => r.me).filter(x => x !== null);
-  const avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null, fav = a => a.length ? Math.round(a.filter(x => x >= 4).length / a.length * 100) : null;
-  const delta = (a, b, dec) => a === null || b === null ? '' : (Math.abs(a - b) < (dec ? 0.05 : 0.5) ? ' · same as last quarter' : ' · ' + (a > b ? '+' : '−') + Math.abs(a - b).toFixed(dec || 0) + ' vs last quarter');
-  const sgn = v => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v);
-  document.getElementById('pulse-kstrip').innerHTML = kpi('Leaders who responded', rows.length, dept ? esc(dept) : (qk === 'all' ? 'all quarters' : pulseQLabel(Number(qk)))) +
-    kpi('HR score (NPS style)', N ? sgn(N.score) : '-', N ? N.pr + ' promoters (9–10), ' + N.pa + ' neutral (7–8), ' + N.de + ' detractors (1–6)' + delta(N.score, PN ? PN.score : null) : '&nbsp;') +
-    kpi('Average rating of HR', N ? N.avg.toFixed(1) + ' / 10' : '-', 'on "how would you rate HR\'s support"' + (N && PN ? delta(N.avg, PN.avg, 1) : '')) +
-    kpi('Support from VP HR', me.length ? avg(me).toFixed(1) + ' / 5' : '-', me.length ? fav(me) + '% rated 4 or 5' + delta(avg(me), pme.length ? avg(pme) : null, 1) : '&nbsp;');
-  // satisfaction by team
-  const satCnt = PULSE_TEAMS.map((t, i) => PULSE_SAT.map(s => rows.filter(r => (r.sat[i] || '').toLowerCase() === s.toLowerCase()).length));
-  const cols = ['#B3261E', '#E8A598', '#C9CFCC', '#7FA9A6', '#0D3133'];
-  try {
-    if (CHARTS['pulse-sat-chart']) CHARTS['pulse-sat-chart'].destroy();
-    CHARTS['pulse-sat-chart'] = new Chart(document.getElementById('pulse-sat-chart'), { type: 'bar', data: { labels: PULSE_TEAMS.map(t => t[1]), datasets: PULSE_SAT.map((s, j) => ({ label: s, data: satCnt.map(c => { const tot = c.reduce((a, b) => a + b, 0); return tot ? Math.round(c[j] / tot * 100) : 0; }), backgroundColor: cols[j] })) },
-      options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true, max: 100, ticks: { callback: v => v + '%' } }, y: { stacked: true } }, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } }, datalabels: { color: (c) => c.datasetIndex >= 3 || c.datasetIndex === 0 ? '#fff' : '#0D3133', font: { size: 10, weight: '700' }, formatter: v => v >= 6 ? v + '%' : '' }, tooltip: { callbacks: { label: c => c.dataset.label + ': ' + c.raw + '%' } } } } });
-  } catch (e) { console.error('pulse chart failed', e); }
-  const prevSat = PULSE_TEAMS.map((t, i) => { const v = prevRows.map(r => PULSE_SAT.findIndex(s => s.toLowerCase() === (r.sat[i] || '').toLowerCase()) + 1).filter(x => x > 0); return v.length ? Math.round(v.filter(x => x >= 4).length / v.length * 100) : null; });
-  document.getElementById('pulse-sat-table').innerHTML = '<thead><tr><th>HR team</th><th>Satisfied</th><th>Neutral</th><th>Dissatisfied</th><th>Average (of 5)</th><th>Answers</th>' + (prevRows.length ? '<th>Satisfied last quarter</th>' : '') + '</tr></thead><tbody>' +
-    PULSE_TEAMS.map((t, i) => { const c = satCnt[i], tot = c.reduce((a, b) => a + b, 0), s = c[3] + c[4], d = c[0] + c[1], a = tot ? c.reduce((x, y, j) => x + y * (j + 1), 0) / tot : null; return '<tr><td><strong>' + t[1] + '</strong></td><td><strong>' + (tot ? Math.round(s / tot * 100) + '%' : '-') + '</strong></td><td>' + (tot ? Math.round(c[2] / tot * 100) + '%' : '-') + '</td><td>' + (tot ? Math.round(d / tot * 100) + '%' : '-') + '</td><td>' + (a === null ? '-' : a.toFixed(1)) + '</td><td>' + tot + '</td>' + (prevRows.length ? '<td>' + (prevSat[i] === null ? '-' : prevSat[i] + '%') + '</td>' : '') + '</tr>'; }).join('') + '</tbody>';
-  // detailed ratings
-  const bar = (v, mx) => '<div style="background:#EEF0EF;border-radius:3px;height:8px;width:110px;display:inline-block;vertical-align:middle;margin-right:6px"><div style="width:' + Math.round(v / mx * 100) + '%;height:8px;border-radius:3px;background:' + (v >= 4 ? '#0D3133' : v >= 3.5 ? '#7FA9A6' : '#E69F50') + '"></div></div>';
-  let ih = '<thead><tr><th>Statement</th><th>Average (of 5)</th><th>Rated 4 or 5</th><th>Rated 1 or 2</th><th>Answers</th></tr></thead><tbody>';
-  PULSE_ITEMS.forEach((g, gi) => { ih += '<tr style="background:#F5F4F2"><td colspan="5"><strong>' + g[0] + '</strong></td></tr>'; g[1].forEach((q, qi) => { const v = rows.map(r => r.items[gi][qi]).filter(x => x !== null && x >= 1 && x <= 5); const a = avg(v); ih += '<tr><td>' + esc(q) + '</td><td>' + (a === null ? '-' : bar(a, 5) + '<strong>' + a.toFixed(1) + '</strong>') + '</td><td>' + (v.length ? fav(v) + '%' : '-') + '</td><td>' + (v.length ? Math.round(v.filter(x => x <= 2).length / v.length * 100) + '%' : '-') + '</td><td>' + v.length + '</td></tr>'; }); });
-  { const v = me; ih += '<tr style="background:#F5F4F2"><td colspan="5"><strong>VP HR</strong></td></tr><tr><td>Overall support and inputs from VP HR</td><td>' + (v.length ? bar(avg(v), 5) + '<strong>' + avg(v).toFixed(1) + '</strong>' : '-') + '</td><td>' + (v.length ? fav(v) + '%' : '-') + '</td><td>' + (v.length ? Math.round(v.filter(x => x <= 2).length / v.length * 100) + '%' : '-') + '</td><td>' + v.length + '</td></tr>'; }
-  document.getElementById('pulse-items-table').innerHTML = ih + '</tbody>';
-  // know + updates
-  const dist = (vals, order) => { const m = {}; vals.filter(Boolean).forEach(v => m[v] = (m[v] || 0) + 1); const keys = order ? order.filter(k => m[k]).concat(Object.keys(m).filter(k => !order.includes(k))) : Object.keys(m).sort((a, b) => m[b] - m[a]); const tot = vals.filter(Boolean).length; return keys.map(k => [k, m[k], tot ? Math.round(m[k] / tot * 100) : 0]); };
-  const KO = ['Yes, most of them', 'Some of them', 'Very few', 'None', 'Not Sure'];
-  const kh = dist(rows.map(r => r.kHRBP), KO), ke = dist(rows.map(r => r.kECD), KO), kk = [...new Set(kh.map(x => x[0]).concat(ke.map(x => x[0])))];
-  document.getElementById('pulse-know-table').innerHTML = '<thead><tr><th>Answer</th><th>Know their HRBP</th><th>Know their ECD</th></tr></thead><tbody>' + kk.map(k => { const a = kh.find(x => x[0] === k), b = ke.find(x => x[0] === k); return '<tr><td>' + esc(k) + '</td><td>' + (a ? a[2] + '% <span style="color:#888">(' + a[1] + ')</span>' : '-') + '</td><td>' + (b ? b[2] + '% <span style="color:#888">(' + b[1] + ')</span>' : '-') + '</td></tr>'; }).join('') + '</tbody>';
-  const ud = dist(rows.map(r => r.upd), ['Yes, regularly', 'Sometimes', 'Rarely', 'No Updates at all']);
-  document.getElementById('pulse-upd-table').innerHTML = '<thead><tr><th>Answer</th><th>Leaders</th><th>Share</th></tr></thead><tbody>' + ud.map(x => '<tr><td>' + esc(x[0]) + '</td><td>' + x[1] + '</td><td><strong>' + x[2] + '%</strong></td></tr>').join('') + '</tbody>';
-  // connect frequency
-  const heat = v => 'background:rgba(13,49,51,' + (0.05 + v / 100 * 0.8).toFixed(2) + ');color:' + (v >= 45 ? '#fff' : '#0D3133') + ';text-align:center;font-weight:700';
-  document.getElementById('pulse-conn-table').innerHTML = '<thead><tr><th>Who connects with whom</th>' + PULSE_FREQ.map(f => '<th style="text-align:center">' + f + '</th>').join('') + '<th style="text-align:center">Monthly or more often</th></tr></thead><tbody>' +
-    PULSE_CONN.map((c, i) => { const v = rows.map(r => r.conn[i]).filter(Boolean), tot = v.length; const pcs = PULSE_FREQ.map(f => tot ? Math.round(v.filter(x => x.toLowerCase() === f.toLowerCase()).length / tot * 100) : 0); const often = pcs.slice(0, 4).reduce((a, b) => a + b, 0); return '<tr><td><strong>' + esc(c.replace('&', 'and')) + '</strong></td>' + pcs.map(p => '<td style="' + heat(p) + '">' + (p ? p + '%' : '-') + '</td>').join('') + '<td style="text-align:center"><strong>' + often + '%</strong></td></tr>'; }).join('') + '</tbody>';
-  // by department
-  const dRows = Object.keys(cnt).filter(d => cnt[d] >= PULSE_MIN_GROUP).sort((a, b) => cnt[b] - cnt[a]), small = Object.keys(cnt).filter(d => cnt[d] < PULSE_MIN_GROUP);
-  const satPct = (rs, i) => { const v = rs.map(r => PULSE_SAT.findIndex(s => s.toLowerCase() === (r.sat[i] || '').toLowerCase()) + 1).filter(x => x > 0); return v.length ? Math.round(v.filter(x => x >= 4).length / v.length * 100) + '%' : '-'; };
-  const drow = (label, rs) => { const n = nps(rs); return '<tr><td><strong>' + esc(label) + '</strong></td><td>' + rs.length + '</td><td>' + (n ? n.avg.toFixed(1) : '-') + '</td><td>' + (n ? sgn(n.score) : '-') + '</td>' + PULSE_TEAMS.map((t, i) => '<td>' + satPct(rs, i) + '</td>').join('') + '</tr>'; };
-  const smallRows = qRows.filter(r => small.includes(r.dept));
-  document.getElementById('pulse-dept-note').textContent = 'HR score per department, and the share satisfied with each HR team. ' + (small.length ? small.length + ' departments with fewer than ' + PULSE_MIN_GROUP + ' responses are combined into one row so no one can be identified.' : '');
-  document.getElementById('pulse-dept-table').innerHTML = '<thead><tr><th>Department</th><th>Responses</th><th>Average (of 10)</th><th>HR score</th>' + PULSE_TEAMS.map(t => '<th>' + t[1].replace(' (Employee Care)', '') + ' satisfied</th>').join('') + '</tr></thead><tbody>' + dRows.map(d => drow(d, qRows.filter(r => r.dept === d))).join('') + (smallRows.length >= PULSE_MIN_GROUP ? drow('Other departments (' + small.length + ')', smallRows) : '') + '<tr style="border-top:2px solid #0D3133;background:#F5F4F2">' + drow('All departments', qRows).slice(4) + '</tbody>';
-  // respondents: names only when asked for
-  { const btn = document.getElementById('pulse-names-btn'); btn.textContent = PULSE_SHOW_NAMES ? 'Hide names' : 'Show names';
-    const grp = v => v === null ? '' : v >= 9 ? 'Happy (9–10)' : v >= 7 ? 'Neutral (7–8)' : 'Unhappy (1–6)';
-    const gcol = v => v === null ? '#888' : v >= 9 ? '#107C10' : v >= 7 ? '#73847B' : '#D13438';
-    const satShort = t => { const k = PULSE_SAT.findIndex(s2 => s2.toLowerCase() === (t || '').toLowerCase()); return k < 0 ? '<span style="color:#bbb">-</span>' : '<span style="font-weight:700;color:' + ['#B3261E', '#D9822B', '#73847B', '#3E7C78', '#0D3133'][k] + '">' + (k + 1) + '</span> <span style="font-size:.7rem;color:#888">' + ['Very dissatisfied', 'Dissatisfied', 'Neutral', 'Satisfied', 'Very satisfied'][k] + '</span>'; };
-    const rs = rows.slice().sort((a, b) => (a.nps === null) - (b.nps === null) || a.nps - b.nps || (a.me || 0) - (b.me || 0));
-    document.getElementById('pulse-resp-note').textContent = PULSE_SHOW_NAMES ? 'Each leader\'s answers, lowest HR rating first. Click any column heading to sort. Names are as the leaders typed them in the form.' : 'Names are hidden. Press Show names to see each leader\'s answers by name, grouped by department.';
-    const byG = {}; rs.forEach(r => { const g = grp(r.nps) || 'No rating'; (byG[g] = byG[g] || []).push(r); });
-    document.getElementById('pulse-resp-groups').innerHTML = ['Unhappy (1–6)', 'Neutral (7–8)', 'Happy (9–10)'].filter(g => byG[g]).map(g => '<div style="margin-bottom:8px;font-size:.82rem;line-height:1.6"><strong style="color:' + gcol(g[0] === 'U' ? 1 : g[0] === 'N' ? 7 : 9) + '">' + g + ' — ' + byG[g].length + (byG[g].length === 1 ? ' leader' : ' leaders') + ':</strong> ' + (PULSE_SHOW_NAMES ? byG[g].map(r => esc(r.who || 'Name not given') + ' <span style="color:#888">(' + esc(r.dept) + ')</span>').join(', ') : '<span style="color:#888">names hidden</span>') + '</div>').join('');
-    document.getElementById('pulse-resp-table').innerHTML = PULSE_SHOW_NAMES ? '<thead><tr><th>Leader</th><th>Department</th><th>HR rating (of 10)</th><th>Group</th>' + PULSE_TEAMS.map(t => '<th>' + t[1].replace(' (Employee Care)', '') + '</th>').join('') + '<th>VP HR (of 5)</th></tr></thead><tbody>' +
-      rs.map(r => '<tr><td><strong>' + esc(r.who || 'Name not given') + '</strong></td><td>' + esc(r.dept) + '</td><td><strong style="color:' + gcol(r.nps) + '">' + (r.nps === null ? '-' : r.nps) + '</strong></td><td style="color:' + gcol(r.nps) + '">' + grp(r.nps).replace(/ \(.*/, '') + '</td>' + r.sat.map(t => '<td>' + satShort(t) + '</td>').join('') + '<td><strong>' + (r.me === null ? '-' : r.me) + '</strong></td></tr>').join('') + '</tbody>' : ''; }
-  // feedback on VP HR
-  { const dist = [1, 2, 3, 4, 5].map(k => me.filter(v => v === k).length), tot = me.length, mx = Math.max(1, ...dist), lbl = ['1 · Very dissatisfied', '2', '3', '4', '5 · Very satisfied'];
-    document.getElementById('pulse-me-dist').innerHTML = '<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:10px"><div style="font-size:2rem;font-weight:800;color:#0D3133">' + (tot ? avg(me).toFixed(1) : '-') + '</div><div style="font-size:.85rem;color:#555">out of 5 · ' + tot + ' leaders · ' + (tot ? fav(me) + '% rated 4 or 5' : '') + (pme.length ? ' · last quarter ' + avg(pme).toFixed(1) : '') + '</div></div>' +
-      [4, 3, 2, 1, 0].map(k => '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;font-size:.8rem"><div style="width:130px">' + lbl[k] + '</div><div style="flex:1;background:#EEF0EF;border-radius:4px;height:14px"><div style="width:' + Math.round(dist[k] / mx * 100) + '%;height:14px;border-radius:4px;background:' + (k >= 3 ? '#0D3133' : k === 2 ? '#C9CFCC' : '#E69F50') + '"></div></div><div style="width:70px;text-align:right"><strong>' + dist[k] + '</strong> ' + (tot ? '(' + Math.round(dist[k] / tot * 100) + '%)' : '') + '</div></div>').join('');
-    const dl = Object.keys(cnt).filter(d => !dept || d === dept).sort((a, b) => cnt[b] - cnt[a]);
-    const big = dl.filter(d => cnt[d] >= PULSE_MIN_GROUP), smallD = dl.filter(d => cnt[d] < PULSE_MIN_GROUP);
-    const line = (label, rs) => { const v = rs.map(r => r.me).filter(x => x !== null); return '<tr><td><strong>' + esc(label) + '</strong></td><td>' + v.length + '</td><td><strong>' + (v.length ? avg(v).toFixed(1) : '-') + '</strong></td><td>' + (v.length ? fav(v) + '%' : '-') + '</td></tr>'; };
-    document.getElementById('pulse-me-dept').innerHTML = '<thead><tr><th>Department</th><th>Leaders</th><th>Average (of 5)</th><th>Rated 4 or 5</th></tr></thead><tbody>' + big.map(d => line(d, rows.filter(r => r.dept === d))).join('') + (smallD.length ? (dept ? line(dept, rows) : line('Other departments (' + smallD.length + ')', rows.filter(r => smallD.includes(r.dept)))) : '') + '</tbody>';
-    const ix = PULSE_COMMENTS.findIndex(c => /start/.test(c[0]));
-    const cl = rows.map(r => r.com[ix]).filter(t => t && t.replace(/[\s.\-]/g, '').length > 2 && !/^(na|n\/a|nil|none|no|nothing|not applicable|no comments?)\.?$/i.test(t.trim()));
-    document.getElementById('pulse-me-cnote').textContent = 'Start, stop or continue — ' + cl.length + ' comments';
-    document.getElementById('pulse-me-comments').innerHTML = cl.length ? cl.map(t => '<div style="border-left:3px solid #E69F50;background:#FAFBFA;padding:7px 11px;margin-bottom:7px;font-size:.8rem;line-height:1.5;border-radius:0 6px 6px 0">' + esc(t).replace(/\n/g, '<br>') + '</div>').join('') : '<div style="color:#999;font-size:.8rem">No written answers in this selection.</div>'; }
-  // comments
-  const cq = document.getElementById('pulse-cq'); if (!cq.options.length) PULSE_COMMENTS.forEach((c, i) => { const o = document.createElement('option'); o.value = i; o.textContent = c[1]; cq.appendChild(o); });
-  PULSE_VIEW = rows; pulseRenderComments();
+  const sn = document.getElementById('pulse-small'); if (dept && cnt[dept] < PULSE_MIN_GROUP) { sn.style.display = ''; sn.textContent = dept + ' has ' + cnt[dept] + (cnt[dept] === 1 ? ' response' : ' responses') + ', so these results may show who answered.'; } else sn.style.display = 'none';
+  const TEAMS = ['hrbp', 'ecd', 'ta', 'ops', 'admin', 'vp'], sel = team === 'all' ? null : team;
+  const scores = (rs, k) => rs.map(r => pulseScore(r, k)).filter(x => x !== null);
+  const card = (title, note, inner) => '<div class="card"><div class="ctitle">' + title + '</div>' + (note ? '<div class="note" style="margin:0 0 10px">' + note + '</div>' : '') + inner + '</div>';
+  const arrow = (a, b) => a === null || b === null || a === b ? '' : ' <span style="color:' + (a > b ? '#107C10' : '#D13438') + ';font-size:.75rem">' + (a > b ? '▲' : '▼') + Math.abs(a - b) + '</span>';
+  // ── tiles ──
+  const allSat = [].concat(...['hrbp', 'ecd', 'ta', 'ops', 'admin'].map(k => scores(rows, k)));
+  const npsV = rows.map(r => r.nps).filter(x => x !== null), pr = npsV.filter(x => x >= 9).length, de = npsV.filter(x => x <= 6).length;
+  const teamStats = TEAMS.map(k => { const v = scores(rows, k), pv = scores(prevRows, k); return { k, v, s: satP(v), a: avg(v), ps: pv.length ? satP(pv) : null }; });
+  const ranked = teamStats.filter(t => t.k !== 'vp' && t.v.length).sort((a, b) => a.s - b.s);
+  let kp;
+  if (!sel) kp = kpi('HR score (NPS style)', npsV.length ? ((pr - de) / npsV.length * 100 > 0 ? '+' : '') + Math.round((pr - de) / npsV.length * 100) : '-', pr + ' happy, ' + (npsV.length - pr - de) + ' neutral, ' + de + ' unhappy · ' + rows.length + ' leaders') +
+    kpi('Satisfied with HR teams', allSat.length ? satP(allSat) + '%' : '-', 'rated 4 or 5, all five teams') + kpi('Strongest team', ranked.length ? PULSE_TEAM_DEF[ranked[ranked.length - 1].k].name : '-', ranked.length ? ranked[ranked.length - 1].s + '% satisfied' : '') + kpi('Weakest team', ranked.length ? PULSE_TEAM_DEF[ranked[0].k].name : '-', ranked.length ? ranked[0].s + '% satisfied' : '');
+  else { const t = teamStats.find(x => x.k === sel); kp = kpi(PULSE_TEAM_DEF[sel].name + ': satisfied', t.v.length ? t.s + '%' : '-', 'rated 4 or 5' + (t.ps !== null ? ' · last quarter ' + t.ps + '%' : '')) + kpi('Average', t.v.length ? t.a.toFixed(1) + ' / 5' : '-', 'out of 5') + kpi('Dissatisfied', t.v.length ? disP(t.v) + '%' : '-', 'rated 1 or 2') + kpi('Leaders who answered', t.v.length, dept || 'all departments'); }
+  document.getElementById('pulse-kstrip').innerHTML = kp;
+  let main = '';
+  // ── 1. team scorecards: weakest first, VP HR last; the selected team is outlined ──
+  const order = ranked.map(t => t.k).concat(['vp']);
+  main += card('Satisfaction with each HR team', 'Share of leaders who rated 4 or 5. Green 80% and above, amber 65–79%, red below 65%. Click a card to look at that team.',
+    '<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px">' + order.map(k => { const t = teamStats.find(x => x.k === k), on = sel === k;
+      let weak = ''; const d = PULSE_TEAM_DEF[k]; if (d.items !== undefined) { const it = PULSE_ITEMS[d.items][1].map((q, qi) => ({ q, a: avg(rows.map(r => r.items[d.items][qi]).filter(y => y !== null && y >= 1 && y <= 5)) })).filter(x => x.a !== null).sort((a, b) => a.a - b.a)[0]; if (it) weak = 'Lowest: ' + esc(it.q) + ' (' + it.a.toFixed(1) + ')'; }
+      return '<div onclick="document.getElementById(\'pulse-team\').value=\'' + (on ? 'all' : k) + '\';pulseRender()" style="cursor:pointer;border-radius:8px;padding:10px 12px;background:' + bandBg(t.s) + ';border:2px solid ' + (on ? '#0D3133' : 'transparent') + (k === 'vp' ? ';border-left:2px dashed #73847B' : '') + '"><div style="font-size:.72rem;font-weight:700;color:#0D3133;text-transform:uppercase;letter-spacing:.04em">' + esc(d.name) + '</div><div style="font-size:1.6rem;font-weight:800;color:' + band(t.s) + ';line-height:1.2">' + (t.v.length ? t.s + '%' : '-') + arrow(t.s, t.ps) + '</div><div style="font-size:.74rem;color:#444">' + (t.v.length ? t.a.toFixed(1) + ' of 5 · ' + t.v.length + ' leaders' : '') + '</div>' + (weak ? '<div style="font-size:.7rem;color:#666;margin-top:4px;line-height:1.35">' + weak + '</div>' : '') + '</div>'; }).join('') + '</div>');
+  // ── 2. heatmap: business department x HR team ──
+  { const big = allDepts.filter(d => cnt[d] >= PULSE_MIN_GROUP), small = allDepts.filter(d => cnt[d] < PULSE_MIN_GROUP);
+    const lines = big.map(d => [d, qRows.filter(r => r.dept === d)]).concat(small.length ? [['Other departments (' + small.length + ')', qRows.filter(r => small.includes(r.dept))]] : []);
+    const hl = label => dept && (label === dept || (small.includes(dept) && /^Other departments/.test(label)));
+    const cell = (v, colOn) => { const p = v.length ? satP(v) : null; return '<td style="text-align:center;background:' + bandBg(p) + ';color:' + band(p) + ';font-weight:700' + (colOn ? ';outline:2px solid #0D3133;outline-offset:-2px' : '') + '">' + (p === null ? '-' : p + '%') + '</td>'; };
+    main += card('Where: satisfaction by department', 'Each cell is the share of that department\'s leaders satisfied with the HR team. Departments with fewer than ' + PULSE_MIN_GROUP + ' responses are combined.' + (dept ? ' The selected department is highlighted.' : ''),
+      '<div class="scrollbox"><table class="dt" id="pulse-heat" style="table-layout:fixed"><thead><tr><th style="width:22%">Department</th><th style="width:8%">Leaders</th>' + TEAMS.map(k => '<th style="text-align:center;width:11.66%' + (sel === k ? ';color:#E69F50' : '') + '">' + esc(PULSE_TEAM_DEF[k].name) + '</th>').join('') + '</tr></thead><tbody>' +
+      lines.map(([label, rs]) => '<tr' + (hl(label) ? ' style="box-shadow:inset 4px 0 0 #E69F50"' : '') + '><td><strong>' + esc(label) + '</strong></td><td>' + rs.length + '</td>' + TEAMS.map(k => cell(scores(rs, k), sel === k)).join('') + '</tr>').join('') +
+      '<tr style="border-top:2px solid #0D3133"><td><strong>All departments</strong></td><td>' + qRows.length + '</td>' + TEAMS.map(k => cell(scores(qRows, k), sel === k)).join('') + '</tr></tbody></table></div>'); }
+  // ── 3. services: left = rated 1-2, right = rated 4-5 ──
+  { let items = [];
+    const groups = sel ? (PULSE_TEAM_DEF[sel].items !== undefined ? [PULSE_TEAM_DEF[sel].items] : []) : [0, 1, 2];
+    groups.forEach(gi => PULSE_ITEMS[gi][1].forEach((q, qi) => { const v = rows.map(r => r.items[gi][qi]).filter(y => y !== null && y >= 1 && y <= 5); if (v.length) items.push({ team: PULSE_ITEMS[gi][0], q, v, a: avg(v), s: satP(v), d: disP(v) }); }));
+    items.sort((a, b) => a.a - b.a); if (!sel) items = items.slice(0, 6);
+    if (items.length) main += card(sel ? 'Why: ' + esc(PULSE_TEAM_DEF[sel].name) + ' services' : 'Why: the lowest-rated services', 'Lowest average first. Red bar: share who rated 1 or 2. Green bar: share who rated 4 or 5. "Not applicable" answers are left out.',
+      '<div style="display:grid;grid-template-columns:minmax(220px,1.6fr) 60px 1fr 1fr;gap:6px 10px;align-items:center;font-size:.8rem"><div style="font-size:.7rem;color:#888;font-weight:700">SERVICE</div><div style="font-size:.7rem;color:#888;font-weight:700;text-align:center">AVERAGE</div><div style="font-size:.7rem;color:#888;font-weight:700;text-align:right">RATED 1–2</div><div style="font-size:.7rem;color:#888;font-weight:700">RATED 4–5</div>' +
+      items.map(x => '<div>' + esc(x.q) + (sel ? '' : ' <span style="color:#888">· ' + esc(x.team) + '</span>') + '</div><div style="text-align:center;font-weight:800;color:' + band(x.s) + '">' + x.a.toFixed(1) + '</div><div style="display:flex;justify-content:flex-end;align-items:center;gap:6px"><span style="color:#888">' + x.d + '%</span><div style="width:' + Math.max(2, x.d) + '%;max-width:100%;height:12px;background:#D13438;border-radius:3px 0 0 3px"></div></div><div style="display:flex;align-items:center;gap:6px"><div style="width:' + Math.max(2, x.s) + '%;height:12px;background:#0D3133;border-radius:0 3px 3px 0"></div><span style="color:#444">' + x.s + '%</span></div>').join('') + '</div>'); }
+  // HRBP and ECD: known by teams, and how often they connect
+  if (sel && PULSE_TEAM_DEF[sel].know) { const d = PULSE_TEAM_DEF[sel], kv = rows.map(r => r[d.know]).filter(Boolean), most = kv.filter(x => /most/i.test(x)).length;
+    const cv = d.conn.map(i => { const v = rows.map(r => r.conn[i]).filter(Boolean); return [PULSE_CONN[i].split('& ')[1], pct(v.filter(x => /daily|weekly|fortnightly|monthly/i.test(x)).length, v.length)]; });
+    main += card('Reach: is ' + esc(d.name) + ' known and in touch?', '', '<div style="display:grid;grid-template-columns:repeat(' + (1 + cv.length) + ',1fr);gap:10px">' + '<div style="background:' + bandBg(pct(most, kv.length)) + ';border-radius:8px;padding:10px 12px"><div style="font-size:.72rem;font-weight:700;color:#0D3133">TEAMS KNOW THEIR ' + esc(d.name.toUpperCase()) + '</div><div style="font-size:1.5rem;font-weight:800;color:' + band(pct(most, kv.length)) + '">' + pct(most, kv.length) + '%</div><div style="font-size:.72rem;color:#555">leaders saying "most of them"</div></div>' + cv.map(([w, p]) => '<div style="background:' + bandBg(p) + ';border-radius:8px;padding:10px 12px"><div style="font-size:.72rem;font-weight:700;color:#0D3133">CONNECTS WITH ' + esc(w.toUpperCase()) + '</div><div style="font-size:1.5rem;font-weight:800;color:' + band(p) + '">' + p + '%</div><div style="font-size:.72rem;color:#555">monthly or more often</div></div>').join('') + '</div>'); }
+  // ── 4. comments ──
+  { const ci = sel ? PULSE_TEAM_DEF[sel].com : 0, list = rows.map(r => r.com[ci]).filter(t => t && t.replace(/[\s.\-]/g, '').length > 2 && !/^(na|n\/a|nil|none|no|nothing|not applicable|no comments?)\.?$/i.test(t.trim()) && !/^n\/?a\b.{0,30}$/i.test(t.trim()));
+    main += card('What leaders said' + (sel ? ' about ' + esc(PULSE_TEAM_DEF[sel].name) : ': main reason for the HR score') + ' <span style="font-weight:400;color:#888;text-transform:none;letter-spacing:0">(' + list.length + ')</span>', '', list.length ? '<div style="max-height:420px;overflow-y:auto;padding-right:4px">' + list.map(t => '<div style="border-left:3px solid #E69F50;background:#FAFBFA;padding:7px 11px;margin-bottom:7px;font-size:.8rem;line-height:1.5;border-radius:0 6px 6px 0">' + esc(t).replace(/\n/g, '<br>') + '</div>').join('') + '</div>' : '<div style="color:#999;font-size:.8rem">No written answers in this selection.</div>'); }
+  document.getElementById('pulse-main').innerHTML = main;
+  // ── 5. follow-up list: leaders who rated the selected team (or any team) 1 or 2 ──
+  const btn = document.getElementById('pulse-names-btn'); btn.textContent = PULSE_SHOW_NAMES ? 'Hide names' : 'Show names';
+  const ks = sel ? [sel] : TEAMS, low = [];
+  rows.forEach(r => { const bad = ks.map(k => [k, pulseScore(r, k)]).filter(([k, x]) => x !== null && x <= 2); if (bad.length) low.push({ r, bad }); });
+  low.sort((a, b) => b.bad.length - a.bad.length || a.r.dept.localeCompare(b.r.dept));
+  document.getElementById('pulse-resp-title').textContent = 'Follow up: leaders who rated ' + (sel ? PULSE_TEAM_DEF[sel].name : 'an HR team') + ' 1 or 2 (' + low.length + ')';
+  document.getElementById('pulse-resp-groups').innerHTML = !low.length ? '<div style="color:#888;font-size:.82rem">No one in this selection.</div>' : (!PULSE_SHOW_NAMES ? '<div style="color:#888;font-size:.82rem">' + low.length + (low.length === 1 ? ' leader' : ' leaders') + '. Names are hidden; press Show names.</div>' :
+    '<div class="scrollbox"><table class="dt"><thead><tr><th>Leader</th><th>Department</th><th>Rated 1 or 2</th><th>HR rating (of 10)</th></tr></thead><tbody>' + low.map(x => '<tr><td><strong>' + esc(x.r.who || 'Name not given') + '</strong></td><td>' + esc(x.r.dept) + '</td><td>' + x.bad.map(([k, v]) => '<span style="display:inline-block;margin:1px 4px 1px 0;padding:1px 8px;border-radius:10px;background:#F9E0DF;color:#B3261E;font-weight:700;font-size:.74rem">' + esc(PULSE_TEAM_DEF[k].name) + ' ' + v + '</span>').join('') + '</td><td>' + (x.r.nps === null ? '-' : x.r.nps) + '</td></tr>').join('') + '</tbody></table></div>');
 }
+
 let PULSE_VIEW = [];
 function pulseRenderComments() {
   const i = parseInt(document.getElementById('pulse-cq').value || '0'), esc = v => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/\n/g, '<br>');
@@ -6188,8 +6148,7 @@ function pulseRenderComments() {
   // Satisfaction and ratings: lowest first, so the weakest areas lead. Problems (RAG status): worst first.
   // Rankings of people: best first. Months and weeks keep their time order and are not listed here.
   const DEFAULTS = [
-    ['pulse-sat-table', /^satisfied$/i, 'asc'], ['pulse-items-table', /^average/i, 'asc'], ['pulse-dept-table', /^hr score$/i, 'asc'],
-    ['pulse-me-dept', /^average/i, 'asc'], ['pulse-conn-table', /monthly or more often/i, 'asc'],
+    ['pulse-dept-table', /^hr score$/i, 'asc'], ['pulse-team-dept', /^satisfied/i, 'asc'], ['pulse-team-items', /^average/i, 'asc'],
     ['ohi-heatmap', /^overall$/i, 'desc'], ['ta-perf-recruiter-table', /^joined$/i, 'desc']
   ];
   window.applyDefaultSorts = () => DEFAULTS.forEach(([id, rx, dir]) => { const t = document.getElementById(id); if (!t || !t.tHead || t.tHead.rows.length !== 1) return; const th = [...t.tHead.rows[0].cells].find(c => rx.test(c.innerText.trim())); if (th && !th.dataset.sort) sortBy(th, dir); });
